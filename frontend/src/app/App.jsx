@@ -25,6 +25,7 @@ import PolicyPage from "../pages/P19Policy";
 import AlertRulesPage from "../pages/P20AlertRules";
 import AiServicePage from "../pages/P21AiService";
 import DesignSystemPage from "../pages/DesignSystem";
+import EscalationsPage from "../pages/PEscalations";
 import { AccessDenied } from "../pages/AccessDenied";
 import StakeholderLayout from "../components/layout/StakeholderLayout";
 import CollegeOverviewPage from "../pages/shared/CollegeOverviewPage";
@@ -39,16 +40,10 @@ import FacultyYearlyReportsHistoryPage from "../pages/faculty/FacultyYearlyRepor
 
 function Guard({ allowed, children, wrapShell = true }) {
   const role = useAppStore((state) => state.role);
-  const logAudit = useAppStore((state) => state.logAudit);
   const location = useLocation();
   const signedIn = useAppStore((state) => state.signedIn);
   if (!signedIn) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (!allowed.includes(role)) {
-    const lastAttempt = `${role}:${location.pathname}`;
-    if (sessionStorage.getItem("last-denied-attempt") !== lastAttempt) {
-      sessionStorage.setItem("last-denied-attempt", lastAttempt);
-      logAudit({ actor: "Demo Member", role, action: "Attempted to open a page outside assigned role", caseId: "—", reason: `Access denied: ${location.pathname}`, denied: true });
-    }
     return <AppShell><AccessDenied /></AppShell>;
   }
   return wrapShell ? <AppShell>{children}</AppShell> : children;
@@ -91,7 +86,7 @@ export default function App() {
     <Route path="/undertakings" element={<Guard allowed={institution}><UndertakingsPage /></Guard>} />
     <Route path="/deficiencies" element={<Guard allowed={institution}><DeficienciesPage /></Guard>} />
     <Route path="/notifications" element={<Guard allowed={["Institution user", ...officers, "EVC member", "SAC/SHC member", ...authorities, "Senior authority", "Admin"]}><NotificationsPage /></Guard>} />
-    <Route path="/audit" element={<Guard allowed={oversight}><AuditPage /></Guard>} />
+    <Route path="/audit" element={<Guard allowed={["Admin"]}><AuditPage /></Guard>} />
     <Route path="/queue" element={<Guard allowed={officers}><QueuePage /></Guard>} />
     <Route path="/case/:caseId" element={<Guard allowed={["Institution user", ...officers, "EVC member", "SAC/SHC member", ...authorities, "Admin"]}><CaseControlPage /></Guard>} />
     <Route path="/verification" element={<Guard allowed={officers}><VerificationPage /></Guard>} />
@@ -101,6 +96,7 @@ export default function App() {
     <Route path="/decisions" element={<Guard allowed={["Competent authority"]}><DecisionsPage /></Guard>} />
     <Route path="/region" element={<Guard allowed={authorities}><RegionPage /></Guard>} />
     <Route path="/reports" element={<Guard allowed={authorities}><ReportsPage /></Guard>} />
+    <Route path="/escalations" element={<Guard allowed={["Senior authority"]}><EscalationsPage /></Guard>} />
     <Route path="/policy" element={<Guard allowed={["Admin"]}><PolicyPage /></Guard>} />
     <Route path="/alert-rules" element={<Guard allowed={["Admin"]}><AlertRulesPage /></Guard>} />
     <Route path="/users" element={<Guard allowed={["Admin"]}><AlertRulesPage usersOnly /></Guard>} />

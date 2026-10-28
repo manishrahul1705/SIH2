@@ -1,83 +1,176 @@
-import cases from "../data/cases.json" with { type: "json" };
-import undertakings from "../data/undertakings.json" with { type: "json" };
-import documents from "../data/documents.json" with { type: "json" };
-import notifications from "../data/notifications.json" with { type: "json" };
-import audit from "../data/audit.json" with { type: "json" };
-import policy from "../data/policy.json" with { type: "json" };
-import dashboard from "../data/dashboard.json" with { type: "json" };
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || "http://localhost:4000/api/v1";
 
-const enrich = (items, count, factory) => Array.from({ length: count }, (_, index) => (
-  items[index] ?? factory(index + 1)
-));
-const fullCases = enrich(cases, 40, (n) => ({
-  ...cases[(n - 1) % cases.length],
-  id: `AT-2026-${String(41 - n).padStart(4, "0")}`,
-}));
-const fullUndertakings = enrich(undertakings, 12, (n) => ({
-  ...undertakings[(n - 1) % undertakings.length],
-  id: `UND-${1100 + n}`,
-  title: ["Update faculty roster", "Submit accessibility report", "Provide equipment log", "Renew building insurance"][(n - 1) % 4],
-}));
-const fullDocuments = enrich(documents, 10, (n) => ({
-  ...documents[(n - 1) % documents.length],
-  id: `DOC-${4000 + n}`,
-}));
-const fullNotifications = enrich(notifications, 20, (n) => ({
-  ...notifications[(n - 1) % notifications.length],
-  id: `NTF-${2000 + n}`,
-}));
-const fullAudit = enrich(audit, 60, (n) => ({
-  ...audit[3 + ((n - 1) % 3)],
-  id: `AUD-${String(61 - n).padStart(4, "0")}`,
-}));
+async function get(path) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+  } catch {
+    throw new Error("Cannot reach the ApprovalTrack backend. Start it and try again.");
+  }
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.error?.message || `Request failed (${response.status}).`);
+  return result?.data;
+}
 
-const delay = () => new Promise((resolve) => window.setTimeout(resolve, 300 + Math.floor(Math.random() * 301)));
+function daysUntil(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.ceil((date.getTime() - Date.now()) / 86400000);
+}
 
-export const mockDataCounts = {
-  cases: fullCases.length,
-  undertakings: fullUndertakings.length,
-  documents: fullDocuments.length,
-  notifications: fullNotifications.length,
-  audit: fullAudit.length,
-  evc: 8,
-};
+function presentCase(record) {
+  const holder = record.holderType === "institution"
+    ? "Institution"
+    : record.holderType === "committee" ? "Committee" : "Officer";
+  const elapsedDays = Math.max(0, Math.floor((Date.now() - new Date(record.stageEnteredAt).getTime()) / 86400000));
+  const statusLabels = {
+    draft: "Draft",
+    submitted: "Submitted",
+    in_progress: "In progress",
+    returned: "Action required",
+    approved: "Approved",
+    rejected: "Rejected",
+  };
+  return {
+    id: record.caseNo || record._id,
+    caseId: record._id,
+    type: record.applicationType,
+    institution: record.institutionId?.name || "Institution",
+    stage: record.currentStage,
+    holder,
+    institutionDays: holder === "Institution" ? elapsedDays : 0,
+    officerDays: holder === "Institution" ? 0 : elapsedDays,
+    status: statusLabels[record.status] || record.status,
+    route: record.route || [],
+    completedStages: record.completedStages || [],
+    version: record.version,
+    returnReason: record.returnReason || "",
+    region: record.region,
+    stageEnteredAt: record.stageEnteredAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+function presentDocument(document) {
+  const validField = document.extraction?.fields?.find((field) => /valid|expir|lease.?end/i.test(field.field_name));
+  const validTo = document.lease?.lease_end || validField?.confirmed_value || validField?.ai_value || null;
+  return {
+    ...document,
+    id: document._id,
+    type: document.doc_type_final || document.doc_type_slot || document.original_name,
+    name: document.original_name,
+    validTo,
+    verification: document.status,
+    aiFlag: ["PROCESSING", "AI_FAILED", "REJECTED"].includes(document.status),
+  };
+}
+
+function presentUndertaking(item) {
+  return {
+    ...item,
+    id: item._id,
+    caseId: item.application_id,
+    condition: item.title,
+    dueDate: item.due_date,
+    submission: item.status === "SUBMITTED" ? "Submitted" : "Not submitted",
+    verification: item.status === "SUBMITTED" ? "Submitted" : "Pending",
+    dueStatus: item.status === "OVERDUE" || daysUntil(item.due_date) < 0 ? "Overdue" : "Open",
+    closure: item.status === "SUBMITTED" ? "Submitted" : "Open",
+  };
+}
+
+function presentAlert(alert) {
+  return {
+    ...alert,
+    id: alert._id,
+    obligation: alert.title,
+    recipient: alert.target_user_id,
+    channel: alert.type,
+    dueDate: alert.due_at,
+    level: alert.severity,
+    acknowledged: alert.status !== "OPEN",
+  };
+}
 
 export const api = {
-  async getDashboard() {
-    await delay();
+  async getDashboard(role) {
+    const [overview, rawCases, rawDocuments, rawAlerts] = await Promise.all([
+      get("/dashboard/overview"),
+      get("/cases?page=1&pageSize=100"),
+      get("/documents?page=1&pageSize=100"),
+      get("/alerts?page=1&pageSize=100"),
+    ]);
+    const cases = rawCases.map(presentCase);
+    const documents = rawDocuments.map(presentDocument);
+    const notifications = rawAlerts.map(presentAlert);
+
+    const optionalLists = [];
+    if (["INSTITUTION", "SCRUTINY_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(role)) {
+      optionalLists.push(get("/undertakings?page=1&pageSize=100").then((items) => ["undertakings", items]));
+    }
+    if (["EVC", "SCRUTINY_OFFICER", "BUREAU_OFFICER", "ADMIN"].includes(role)) {
+      optionalLists.push(get("/visits?page=1&pageSize=100").then((items) => ["visits", items]));
+    }
+    if (role === "ADMIN") {
+      optionalLists.push(
+        get("/admin/audit-logs?page=1&pageSize=100").then((result) => ["audit", result]),
+        get("/policies").then((items) => ["policyVersions", items]),
+      );
+    }
+    if (["BUREAU_OFFICER", "SENIOR_AUTHORITY", "ADMIN"].includes(role)) {
+      optionalLists.push(get("/dashboard/analytics").then((analytics) => ["analytics", analytics]));
+    }
+    const optionalResults = await Promise.all(optionalLists);
+    const optional = Object.fromEntries(optionalResults);
+    const undertakings = (optional.undertakings || []).map(presentUndertaking);
+    const openUndertakings = undertakings.filter((item) => item.submission !== "Submitted");
+    const expiringDocuments = documents.filter((document) => {
+      const days = daysUntil(document.validTo);
+      return days !== null && days >= 0 && days <= 30;
+    });
+
+    const audit = (optional.audit || []).map((entry) => ({
+      ...entry,
+      id: entry._id,
+      time: entry.createdAt,
+      actor: entry.actor_id?.name || entry.actor_id?.email || "System",
+      role: entry.actor_id?.role || "",
+      caseId: entry.entity_id,
+      denied: entry.outcome === "denied",
+      reason: entry.after_json?.reason || "",
+    }));
+
     return {
-      scoreInput: { assessmentComplete: true, deductions: { undertakings: 12, nonLeaseDocuments: 14, lease: 0, evcReadiness: 5, history: 6 }, caps: { undertakings: 30, nonLeaseDocuments: 30, lease: 10, evcReadiness: 20, history: 20 } },
-      projectedScore: { score: 50, date: "2026-11-25", note: "This is a calculation from known dates, not a prediction." },
-      cases: fullCases,
-      undertakings: fullUndertakings,
-      documents: fullDocuments,
-      notifications: fullNotifications,
-      audit: fullAudit,
-      policy,
-      summary: dashboard,
-      evc: Array.from({ length: 8 }, (_, i) => ({ id: `EVC-${i + 1}`, caseId: fullCases[i].id, institution: fullCases[i].institution, status: ["Queued", "Scheduled", "Report uploaded", "Completed"][i % 4], priority: fullCases[i].type === "New institution" && policy.priorityNewInstitution ? "Priority per signed-off policy" : "Standard" })),
+      cases,
+      documents,
+      undertakings,
+      notifications,
+      audit,
+      evc: optional.visits || [],
+      policy: {
+        versions: (optional.policyVersions || []).map((policy) => ({
+          ...policy,
+          status: policy.status === "signed_off" ? "Signed off" : policy.status,
+          signedOff: policy.signedOffAt,
+        })),
+        routes: {},
+        timelines: {},
+        applicationRoutes: {},
+      },
+      summary: {
+        openUndertakings: openUndertakings.length,
+        undertakingsDueIn7Days: openUndertakings.filter((item) => {
+          const days = daysUntil(item.dueDate);
+          return days !== null && days >= 0 && days <= 7;
+        }).length,
+        documentsExpiringIn30Days: expiringDocuments.length,
+        casesInProgress: cases.filter((item) => item.status === "In progress").length,
+        waitingOnOfficers: cases.filter((item) => item.holder !== "Institution").length,
+        applications: overview.applications,
+        openAlerts: overview.openAlerts,
+      },
+      analytics: optional.analytics || null,
     };
-  },
-  async getCases() { await delay(); return fullCases; },
-  async getNotifications() { await delay(); return fullNotifications; },
-  async getAudit() { await delay(); return fullAudit; },
-  async getPolicy() { await delay(); return policy; },
-  async submitApplication(data) {
-    await delay();
-    const id = `AT-2026-${String(fullCases.length + 1).padStart(4, "0")}`;
-    const record = {
-      id,
-      institution: "Demo Institute",
-      type: data.type,
-      route: data.route,
-      stage: "Submitted",
-      holder: "Officer",
-      institutionDays: 0,
-      officerDays: 0,
-      region: "South",
-      status: "Submitted",
-    };
-    fullCases.unshift(record);
-    return { id, policy: policy.current, ...data };
   },
 };

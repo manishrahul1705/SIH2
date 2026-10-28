@@ -8,6 +8,27 @@ export const APPLICATION_TYPES = Object.freeze([
   "restoration_of_intake",
 ]);
 
+export const DEFAULT_APPLICABILITY = Object.freeze({
+  landIsLeased: false,
+  newAreaAdded: false,
+  buildingOver30: false,
+  claimsAccreditation: false,
+  landChanged: false,
+  premisesShared: false,
+  premisesUsed: false,
+  affiliatingBodyRequired: false,
+});
+
+export function normalizeApplicability(answers = {}) {
+  return {
+    ...DEFAULT_APPLICABILITY,
+    ...answers,
+    buildingOver30: typeof answers.buildingOver30 === "boolean"
+      ? answers.buildingOver30
+      : Number.isFinite(answers.buildingAgeYears) && answers.buildingAgeYears > 30,
+  };
+}
+
 const trackedKinds = new Set([
   "lease",
   "fire",
@@ -49,7 +70,7 @@ const conditions = {
   encumbrance_certificate: ["landIsLeased", "landIsLeased", "landIsLeased", "", "landIsLeased", "", "landIsLeased"],
   approved_building_plan_with_architect_certificate: ["", "", "", "", "", "", "newAreaAdded"],
   occupancy_or_building: ["", "newAreaAdded", "newAreaAdded", "newAreaAdded", "newAreaAdded", "premisesShared", "newAreaAdded"],
-  structural: ["buildingAgeYears>30", "buildingAgeYears>30", "buildingAgeYears>30", "buildingAgeYears>30", "buildingAgeYears>30", "", "buildingAgeYears>30"],
+  structural: ["buildingOver30", "buildingOver30", "buildingOver30", "buildingOver30", "buildingOver30", "", "buildingOver30"],
   fire: ["", "", "", "", "", "premisesUsed", ""],
   society_or_trust_registration: ["", "landChanged", "landChanged", "landChanged", "landChanged", "landChanged", "landChanged"],
   audited_accounts: ["", "review_required", "review_required", "review_required", "review_required", "review_required", "review_required"],
@@ -85,6 +106,9 @@ function evaluateCondition(condition, answers) {
   const values = clauses.map((clause) => {
     const ageMatch = /^buildingAgeYears\s*>\s*(\d+)$/.exec(clause);
     if (ageMatch) {
+      if (typeof answers?.buildingOver30 === "boolean" && Number(ageMatch[1]) === 30) {
+        return answers.buildingOver30;
+      }
       return typeof answers?.buildingAgeYears === "number" && Number.isFinite(answers.buildingAgeYears)
         ? answers.buildingAgeYears > Number(ageMatch[1])
         : null;

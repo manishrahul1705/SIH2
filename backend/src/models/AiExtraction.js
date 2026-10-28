@@ -18,6 +18,7 @@ const extractedFieldSchema = new mongoose.Schema({
 const aiExtractionSchema = new mongoose.Schema({
   document_id: { type: objectId, ref: "Document", required: true, index: true },
   ocr_text_path: { type: String, default: "", select: false },
+  extracted_lines: { type: [String], default: [] },
   m1_type: { type: String, default: "" },
   m1_confidence: { type: Number, min: 0, max: 1, default: 0 },
   m2_json: { type: mixed, default: null },

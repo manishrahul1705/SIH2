@@ -68,6 +68,17 @@ describe("foundation API", () => {
     expect(response.status).toBe(401);
   });
 
+  it("protects case document and extraction reads with session authentication", async () => {
+    const [documents, extraction, documentList] = await Promise.all([
+      request(app).get("/api/v1/cases/507f1f77bcf86cd799439011/documents"),
+      request(app).get("/api/v1/documents/507f1f77bcf86cd799439011/extraction"),
+      request(app).get("/api/v1/documents"),
+    ]);
+    expect(documents.status).toBe(401);
+    expect(extraction.status).toBe(401);
+    expect(documentList.status).toBe(401);
+  });
+
   it("protects obligation evidence submission and verification routes", async () => {
     const headers = { "X-Requested-With": "XMLHttpRequest" };
     const submission = await request(app)

@@ -1,73 +1,47 @@
-import { ArrowDownToLine, Award, Building2, CalendarDays, CheckCircle2, FileText, MapPin, ShieldCheck } from "lucide-react";
+import { Building2, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import { eoaHistory, institutionProfile, safetyCertificates } from "../../data/mockStakeholderData";
 import { PageHeader, Panel, SafeguardNote, StatusPill } from "../../components/stakeholder/PortalPrimitives";
 import { useStakeholder } from "../../context/StakeholderContext";
 
-function downloadLetter(item) {
-  const contents = [
-    "ApprovalTrack fictional public disclosure",
-    institutionProfile.name,
-    `AICTE Permanent ID: ${institutionProfile.permanentId}`,
-    `Academic year: ${item.year}`,
-    `Status: ${item.status}`,
-    `Issue date: ${item.date}`,
-    "This demo summary is not an official AICTE approval letter.",
-  ].join("\n");
-  return `data:text/plain;charset=utf-8,${encodeURIComponent(contents)}`;
+function Display({ label, value }) {
+  return <div className="stakeholder-overview-metric"><span>{label}</span><strong>{value === null || value === undefined || value === "" ? "Not recorded" : value}</strong></div>;
 }
 
 export default function CollegeOverviewPage() {
-  const { role } = useStakeholder();
+  const { role, institution, profile, loading, error } = useStakeholder();
   const faculty = role === "faculty";
+  if (loading) return <div className="stakeholder-page"><PageHeader title="College Overview" /><Panel title="Loading institution data">Loading from ApprovalTrack...</Panel></div>;
+  if (error) return <div className="stakeholder-page"><PageHeader title="College Overview" /><Panel title="Unable to load institution data"><p role="alert">{error}</p></Panel></div>;
+  if (!institution) return <div className="stakeholder-page"><PageHeader title="College Overview" /><Panel title="Institution not linked"><p>Your account is not linked to an institution profile.</p></Panel></div>;
+
   return <div className="stakeholder-page">
-    <PageHeader
-      eyebrow="PUBLIC INSTITUTION PROFILE"
-      title={faculty ? "College Overview & Offerings" : "College Overview & Approval"}
-      description="Read-only view of the institution's published approval status, approved programmes, and compliance disclosures."
-      action={<StatusPill>{institutionProfile.approvalStatus}</StatusPill>}
-    />
+    <PageHeader eyebrow="INSTITUTION RECORD" title={faculty ? "College Overview" : "College Overview & Approval"}
+      description="Institution information and record counts returned for your authenticated institution." />
     <div className="stakeholder-profile-hero">
       <div className="stakeholder-profile-icon"><Building2 size={26} /></div>
       <div className="stakeholder-profile-main">
-        <p className="stakeholder-eyebrow">FICTIONAL DEMO INSTITUTION</p>
-        <h2>{institutionProfile.name}</h2>
-        <div className="stakeholder-inline-meta"><span><MapPin size={15} />{institutionProfile.location}</span><span><span className="meta-dot" />AICTE Permanent ID: <strong>{institutionProfile.permanentId}</strong></span></div>
+        <p className="stakeholder-eyebrow">BACKEND INSTITUTION RECORD</p>
+        <h2>{institution.name}</h2>
+        <div className="stakeholder-inline-meta"><span><MapPin size={15} />{institution.state || "State not recorded"}</span><span>AICTE Permanent ID: <strong>{institution.aicte_id || "Not recorded"}</strong></span></div>
       </div>
-      <div className="stakeholder-profile-year"><span>ACADEMIC YEAR</span><strong>{institutionProfile.academicYear}</strong><small>Latest EoA · {institutionProfile.latestEoaDate}</small></div>
+      <div className="stakeholder-profile-year"><span>STATUS</span><strong><StatusPill>{institution.status}</StatusPill></strong><small>{institution.region || "Region not recorded"}</small></div>
     </div>
     <div className="stakeholder-overview-metrics">
-      <div className="stakeholder-overview-metric"><span>University affiliation</span><strong>{institutionProfile.affiliation}</strong></div>
-      <div className="stakeholder-overview-metric"><span>Institution type</span><strong>{institutionProfile.type}</strong></div>
-      <div className="stakeholder-overview-metric"><span>Accrediting bodies</span><strong>{institutionProfile.accreditingBodies.join(" · ")}</strong></div>
-      {faculty && <div className="stakeholder-overview-metric"><span>Public faculty-student ratio</span><strong>{institutionProfile.facultyStudentRatio} <small>against {institutionProfile.requiredRatio} norm</small></strong></div>}
+      <Display label="Contact email" value={institution.contact_email} />
+      <Display label="Contact phone" value={institution.contact_phone} />
+      <Display label="Applications in system" value={institution.counts?.applications} />
+      {faculty && <Display label="Active faculty records" value={institution.counts?.activeFaculty} />}
+      {!faculty && <Display label="Active student records" value={institution.counts?.activeStudents} />}
     </div>
-    {faculty && <SafeguardNote>Institutional compliance snapshot is published disclosure only. It is not a verified finding and has no automatic Action Score or application-routing effect.</SafeguardNote>}
-    <div className="stakeholder-two-column">
-      <Panel title="Extension of Approval history" description="Demo summaries of public approval records by academic year.">
-        <div className="stakeholder-eoa-list">
-          {eoaHistory.map((item) => <div className="stakeholder-eoa-row" key={item.year}>
-            <span className="stakeholder-eoa-icon"><FileText size={17} /></span>
-            <div className="stakeholder-eoa-copy"><strong>{item.year} Extension of Approval</strong><small>{item.status} · issued {item.date}</small></div>
-            <a className="stakeholder-icon-action" href={downloadLetter(item)} download={`demo-eoa-${item.year}.txt`} aria-label={`Download demo EoA summary for ${item.year}`}><ArrowDownToLine size={17} /></a>
-          </div>)}
-        </div>
-        <p className="stakeholder-small-disclaimer">Downloadable items are fictional summaries, not official approval documents.</p>
-      </Panel>
-      <Panel title="Public statutory compliance" description="Verified status badges published in the demo profile; sensitive internal reference numbers are not shown.">
-        <div className="stakeholder-compliance-list">
-          {safetyCertificates.map((certificate) => <div className="stakeholder-compliance-row" key={certificate.name}>
-            <div className="stakeholder-check-icon"><CheckCircle2 size={17} /></div>
-            <div><strong>{certificate.name}</strong><small>{certificate.issuer} · valid to {certificate.expires}</small></div>
-            <StatusPill>{certificate.status}</StatusPill>
-          </div>)}
-        </div>
-      </Panel>
-    </div>
-    <div className="stakeholder-quick-links">
-      <Link to={`/${role}/offerings`}><Award size={17} />View approved courses</Link>
-      <Link to={`/${role}/facilities`}><ShieldCheck size={17} />View campus facilities</Link>
-      {!faculty && <Link to="/student/committees"><CalendarDays size={17} />Committee contacts</Link>}
-    </div>
+    <SafeguardNote>Only fields present in the backend institution record are shown. Programmes, approval letters, safety certificates, and other disclosures are not represented here unless they exist as backend records.</SafeguardNote>
+    <Panel title="Published records" description="No course catalog, facilities, committee directory, or approval-history endpoint is currently connected to this portal.">
+      <p>These disclosures are unavailable because the backend does not currently store them.</p>
+      <div className="stakeholder-quick-links">
+        <Link to={`/${role}/offerings`}>Course offerings</Link>
+        <Link to={`/${role}/facilities`}>Campus facilities</Link>
+        {!faculty && <Link to="/student/committees">Committee contacts</Link>}
+      </div>
+      <p>{faculty ? `Signed-in faculty profile: ${profile?.name || "Not recorded"} · ${profile?.department || "Department not recorded"}` : `Signed-in student profile: ${profile?.name || "Not recorded"} · ${profile?.programme || "Programme not recorded"}`}</p>
+    </Panel>
   </div>;
 }

@@ -60,6 +60,26 @@ function normalizedField(name, raw) {
   };
 }
 
+function expectedFields(document, extractedFields) {
+  const fields = new Map(extractedFields.map((field) => [field.field_name, field]));
+  const expectedNames = ["issue_date", "valid_from", "valid_to", "cert_no", "issuer"];
+  if (typeKey(document.doc_type_slot) === "lease") {
+    expectedNames.push("lease_start", "lease_end", "lease_term");
+  }
+  for (const name of expectedNames) {
+    if (!fields.has(name)) fields.set(name, normalizedField(name, {}));
+  }
+  return [
+    ...expectedNames.map((name) => fields.get(name)),
+    ...extractedFields.filter((field) => !expectedNames.includes(field.field_name)),
+  ];
+}
+
+function extractedLines(text) {
+  return text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    .slice(0, 500).map((line) => line.slice(0, 1000));
+}
+
 function summarizeM1(m1) {
   const value = safeText(m1?.value || "other");
   return { type: value, confidence: number(m1?.confidence), display: safeText(m1?.display_name || value) };
@@ -129,23 +149,26 @@ export async function processDocument(documentId) {
     { new: true },
   ).select("+file_path");
   if (!document) return;
+  let ocrText = "";
   try {
     const absoluteFile = localStorage.resolve(document.file_path);
     const ocr = ocrSchema.parse(await runPythonJson(scriptPath(env.OCR_SCRIPT_PATH), [absoluteFile]));
     if (!ocr.supported || ocr.quarantined) {
       throw Object.assign(new Error("OCR could not safely read this file"), { code: "OCR_UNAVAILABLE" });
     }
+    ocrText = ocr.full_text || ocr.pages.map((page) => page.text || "").join("\n");
     const m1Raw = m1Schema.parse(await runPythonJson(scriptPath(env.M1_SCRIPT_PATH), ["--file", absoluteFile]));
     const m1 = summarizeM1(m1Raw);
     const m2 = m2Schema.parse(await runPythonJson(scriptPath(env.M2_SCRIPT_PATH), [absoluteFile, "--doc-type", m1.type]));
-    const fields = Object.entries(m2.fields || {}).map(([name, value]) => normalizedField(name, value));
+    const extractedFields = Object.entries(m2.fields || {}).map(([name, value]) => normalizedField(name, value));
     let m3 = null;
     if (m1.type === "lease" || typeKey(document.doc_type_slot) === "lease") {
       m3 = m3Schema.parse(await runPythonJson(scriptPath(env.M3_SCRIPT_PATH), [absoluteFile, "--doc-type", "lease"]));
       for (const name of ["lease_start", "lease_end", "lease_term"]) {
-        if (m3.fields?.[name]) fields.push(normalizedField(name, m3.fields[name]));
+        if (m3.fields?.[name]) extractedFields.push(normalizedField(name, m3.fields[name]));
       }
     }
+    const fields = expectedFields(document, extractedFields);
     const [application, caseRecord] = await Promise.all([
       document.application_id ? Application.findById(document.application_id).lean() : null,
       document.case_id ? CaseRecord.findOne({ _id: document.case_id, deletedAt: null }).lean() : null,
@@ -174,12 +197,13 @@ export async function processDocument(documentId) {
     if (slotMismatch) results.push({ ruleId: "DOC_TYPE_MISMATCH", severity: "WARNING", passed: false, message: "Detected type differs from the selected slot.", basis: "SYNTHETIC" });
     const zones = fields.map((item) => item.zone);
     const overallZone = zones.includes("RED") ? "RED" : zones.includes("AMBER") ? "AMBER" : "GREEN";
-    const rawText = ocr.full_text || ocr.pages.map((page) => page.text || "").join("\n");
-    const textPath = rawText ? (await localStorage.save(Buffer.from(rawText, "utf8"), `${document._id}-ocr.txt`)).filePath : "";
+    const lines = extractedLines(ocrText);
+    const textPath = ocrText ? (await localStorage.save(Buffer.from(ocrText, "utf8"), `${document._id}-ocr.txt`)).filePath : "";
     await withTransaction(async (session) => {
       const [created] = await AiExtraction.create([{
         document_id: document._id,
         ocr_text_path: textPath,
+        extracted_lines: lines,
         m1_type: m1.display,
         m1_confidence: m1.confidence,
         m2_json: m2,
@@ -235,8 +259,9 @@ export async function processDocument(documentId) {
         document_id: document._id,
         overall_zone: "RED",
         processing_error_code: errorCode,
+        extracted_lines: extractedLines(ocrText),
         rule_results_json: [],
-        fields: [],
+        fields: expectedFields(document, []),
       }], { session });
       await writeAudit({ actor_id: null, action: "DOCUMENT_AI_EXTRACTION_FAILED", entity: "Document", entity_id: document._id, after_json: { extraction_id: failure._id, error_code: errorCode } }, { session });
     });

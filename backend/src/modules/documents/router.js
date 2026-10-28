@@ -16,7 +16,8 @@ import { processDocument } from "../ai/pipeline.js";
 import { evaluate, getRuleConfig } from "../rules/engine.js";
 import { localStorage } from "./storage.js";
 import { buildChecklist } from "../../engine/checklist.js";
-import { scopedCase } from "../cases/router.js";
+import { caseFilterForUser, scopedCase } from "../cases/router.js";
+import { hasManualCompletionValue } from "./confirmation.js";
 
 const accessRoles = ["INSTITUTION", "SCRUTINY_OFFICER", "EVC", "SAC_SHC", "BUREAU_OFFICER", "SENIOR_AUTHORITY", "ADMIN"];
 const allowedMime = new Set(["application/pdf", "image/jpeg", "image/png"]);
@@ -34,8 +35,8 @@ const confirmSchema = z.object({
 }).strict();
 const unlink = promisify(fs.unlink);
 
-function envelope(res, req, data, status = 200) {
-  return res.status(status).json({ data, error: null, meta: { requestId: req.id } });
+function envelope(res, req, data, status = 200, pagination = {}) {
+  return res.status(status).json({ data, error: null, meta: { requestId: req.id, ...pagination } });
 }
 
 function magicMime(buffer) {
@@ -94,8 +95,169 @@ function schedulePipeline(documentId) {
   });
 }
 
+function scheduleDocumentBatch(documents) {
+  setImmediate(async () => {
+    for (const document of documents) {
+      try {
+        await processDocument(document._id);
+      } catch (error) {
+        await Document.updateOne({ _id: document._id }, { $set: { status: "AI_FAILED" } });
+        logger.warn({ documentId: document._id.toString(), code: error.code || "PIPELINE_FAILED" }, "Document batch processing failed");
+      }
+    }
+  });
+}
+
 export function documentsRouter() {
   const router = express.Router();
+
+  router.get("/cases/:id/documents", authenticate, requireRole(...accessRoles), validate(z.object({ id: idSchema }).strict(), "params"), async (req, res, next) => {
+    try {
+      const caseRecord = await scopedCase(req.params.id, req.user);
+      if (!caseRecord) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Case not found in your scope" }, meta: { requestId: req.id } });
+      const documents = await Document.find({
+        case_id: caseRecord._id,
+        status: { $ne: "SUPERSEDED" },
+      }).select("_id doc_type_slot doc_type_final original_name mime status pages version createdAt").sort({ createdAt: 1, _id: 1 }).lean();
+      const extractions = await AiExtraction.find({
+        document_id: { $in: documents.map((document) => document._id) },
+      }).sort({ createdAt: -1 }).lean();
+      const latestExtraction = new Map();
+      for (const extraction of extractions) {
+        const documentId = extraction.document_id.toString();
+        if (!latestExtraction.has(documentId)) latestExtraction.set(documentId, extraction);
+      }
+      return envelope(res, req, documents.map((document) => ({
+        ...document,
+        extraction: latestExtraction.get(document._id.toString()) || null,
+      })));
+    } catch (error) { return next(error); }
+  });
+
+  router.post("/cases/:id/documents/analyze", authenticate, requireRole(...accessRoles), requireRole("INSTITUTION", "ADMIN"), validate(z.object({ id: idSchema }).strict(), "params"), async (req, res, next) => {
+    try {
+      const caseRecord = await scopedCase(req.params.id, req.user);
+      if (!caseRecord) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Case not found in your scope" }, meta: { requestId: req.id } });
+      if (req.user.role === "INSTITUTION" && !["draft", "returned"].includes(caseRecord.status)) {
+        return res.status(409).json({ data: null, error: { code: "CASE_NOT_EDITABLE", message: "Documents can only be analyzed for a draft or returned case" }, meta: { requestId: req.id } });
+      }
+      if (req.user.role === "ADMIN" && ["approved", "rejected"].includes(caseRecord.status)) {
+        return res.status(409).json({ data: null, error: { code: "CASE_CLOSED", message: "Documents cannot be analyzed for a closed case" }, meta: { requestId: req.id } });
+      }
+      const documents = await Document.find({
+        case_id: caseRecord._id,
+        status: { $ne: "SUPERSEDED" },
+      }).select("_id status doc_type_slot original_name").sort({ createdAt: 1, _id: 1 });
+      if (!documents.length) return res.status(409).json({ data: null, error: { code: "NO_CASE_DOCUMENTS", message: "Upload at least one document before starting detection" }, meta: { requestId: req.id } });
+      const queued = [];
+      for (const document of documents) {
+        if (document.status === "AI_FAILED") {
+          document.status = "UPLOADED";
+          await document.save();
+          queued.push(document);
+        } else if (document.status === "UPLOADED") {
+          queued.push(document);
+        }
+      }
+      await writeAudit({
+        actor_id: req.user._id,
+        action: "CASE_DOCUMENT_BATCH_ANALYSIS_STARTED",
+        entity: "CaseRecord",
+        entity_id: caseRecord._id,
+        after_json: { document_count: documents.length, queued_count: queued.length },
+        ip: req.ip,
+      });
+      if (queued.length) scheduleDocumentBatch(queued);
+      return envelope(res, req, {
+        documents: documents.map((document) => ({
+          document_id: document._id,
+          slot_id: document.doc_type_slot,
+          file_name: document.original_name,
+          status: document.status,
+        })),
+        queued_count: queued.length,
+      }, 202);
+    } catch (error) { return next(error); }
+  });
+
+  router.get("/documents", authenticate, requireRole(...accessRoles), validate(z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(100),
+  }).strict(), "query"), async (req, res, next) => {
+    try {
+      let applicationFilter = { deleted_at: null };
+      const caseFilter = await caseFilterForUser(req.user) || { _id: { $in: [] } };
+      if (req.user.role === "INSTITUTION") {
+        const institutionId = req.user.institution_id
+          || (await Institution.findOne({ contact_email: req.user.email, deleted_at: null }).select("_id"))?._id;
+        if (!institutionId) return envelope(res, req, [], 200, { total: 0, page: req.query.page, pageSize: req.query.pageSize });
+        applicationFilter.institution_id = institutionId;
+      } else if (req.user.role === "SCRUTINY_OFFICER") {
+        applicationFilter.assigned_officer_id = req.user._id;
+      } else if (req.user.role === "EVC") {
+        const visitApplicationIds = await Visit.find({ evc_user_id: req.user._id }).distinct("application_id");
+        applicationFilter._id = { $in: visitApplicationIds };
+      } else if (req.user.role === "SAC_SHC") {
+        applicationFilter._id = { $in: [] };
+      } else if (req.user.role === "BUREAU_OFFICER" || req.user.role === "SENIOR_AUTHORITY") {
+        if (req.user.region) {
+          applicationFilter.institution_id = { $in: await Institution.find({ region: req.user.region, deleted_at: null }).distinct("_id") };
+        } else {
+          applicationFilter._id = { $in: [] };
+        }
+      }
+
+      const [applicationIds, caseIds] = await Promise.all([
+        Application.find(applicationFilter).distinct("_id"),
+        CaseRecord.find(caseFilter).distinct("_id"),
+      ]);
+      const filter = {
+        deleted_at: null,
+        status: { $ne: "SUPERSEDED" },
+        $or: [
+          { application_id: { $in: applicationIds } },
+          { case_id: { $in: caseIds } },
+        ],
+      };
+      const { page, pageSize } = req.query;
+      const [documents, total] = await Promise.all([
+        Document.find(filter)
+          .select("_id application_id case_id doc_type_slot doc_type_final original_name mime status pages version createdAt")
+          .sort({ createdAt: -1, _id: -1 })
+          .skip((page - 1) * pageSize)
+          .limit(pageSize)
+          .lean(),
+        Document.countDocuments(filter),
+      ]);
+      const documentIds = documents.map((document) => document._id);
+      const [extractions, leases, applications, cases] = await Promise.all([
+        AiExtraction.find({ document_id: { $in: documentIds } })
+          .select("document_id fields m1_type m1_confidence overall_zone processing_error_code createdAt")
+          .sort({ createdAt: -1 })
+          .lean(),
+        LeaseDetail.find({ document_id: { $in: documentIds } })
+          .select("document_id lease_start lease_end lease_term_years registered validity_status")
+          .lean(),
+        Application.find({ _id: { $in: applicationIds } }).select("application_number type status current_stage").lean(),
+        CaseRecord.find({ _id: { $in: caseIds } }).select("caseNo applicationType status currentStage").lean(),
+      ]);
+      const extractionByDocument = new Map();
+      for (const extraction of extractions) {
+        const key = extraction.document_id.toString();
+        if (!extractionByDocument.has(key)) extractionByDocument.set(key, extraction);
+      }
+      const leaseByDocument = new Map(leases.map((lease) => [lease.document_id.toString(), lease]));
+      const applicationById = new Map(applications.map((application) => [application._id.toString(), application]));
+      const caseById = new Map(cases.map((caseRecord) => [caseRecord._id.toString(), caseRecord]));
+      return envelope(res, req, documents.map((document) => ({
+        ...document,
+        extraction: extractionByDocument.get(document._id.toString()) || null,
+        lease: leaseByDocument.get(document._id.toString()) || null,
+        application: document.application_id ? applicationById.get(document.application_id.toString()) || null : null,
+        case: document.case_id ? caseById.get(document.case_id.toString()) || null : null,
+      })), 200, { total, page, pageSize, pages: Math.ceil(total / pageSize) });
+    } catch (error) { return next(error); }
+  });
 
   router.post("/cases/:id/documents", authenticate, requireRole(...accessRoles), requireRole("INSTITUTION", "ADMIN"), upload.single("file"), async (req, res, next) => {
     let savedFile;
@@ -186,7 +348,6 @@ export function documentsRouter() {
         }], session ? { session } : {});
         return { document: created, version: nextVersion };
       });
-      schedulePipeline(document._id);
       return envelope(res, req, { document_id: document._id, status: document.status, version }, 202);
     } catch (error) {
       if (savedFile) await unlink(savedFile.absolutePath).catch(() => {});
@@ -321,6 +482,9 @@ export function documentsRouter() {
       const result = await documentForUser(req.params.id, req.user);
       if (!result) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Document not found" }, meta: { requestId: req.id } });
       if (result.document.status === "SUPERSEDED") return res.status(409).json({ data: null, error: { code: "DOCUMENT_SUPERSEDED", message: "Superseded document suggestions cannot be confirmed" }, meta: { requestId: req.id } });
+      if (result.caseRecord && req.user.role === "INSTITUTION" && !["draft", "returned"].includes(result.caseRecord.status)) {
+        return res.status(409).json({ data: null, error: { code: "CASE_NOT_EDITABLE", message: "Documents can only be edited while the case is a draft or returned" }, meta: { requestId: req.id } });
+      }
       const extraction = await AiExtraction.findOne({ document_id: result.document._id }).sort({ createdAt: -1 });
       if (!extraction) return res.status(409).json({ data: null, error: { code: "EXTRACTION_NOT_READY", message: "No extraction is ready to confirm" }, meta: { requestId: req.id } });
       const requested = req.body.fields;
@@ -351,8 +515,16 @@ export function documentsRouter() {
         }
       }
       if (selected.some((field) => !field)) return res.status(400).json({ data: null, error: { code: "UNKNOWN_FIELD", message: "One or more fields are not part of this extraction" }, meta: { requestId: req.id } });
+      if (result.document.status === "AI_FAILED"
+        && req.body.complete
+        && !hasManualCompletionValue(requested)) {
+        return res.status(422).json({
+          data: null,
+          error: { code: "MANUAL_FIELDS_REQUIRED", message: "Enter at least one document value before completing a document that could not be analyzed" },
+          meta: { requestId: req.id },
+        });
+      }
       const hasReviewZone = selected.some((field) => field.zone !== "GREEN");
-      if (hasReviewZone && requested.length !== 1) return res.status(400).json({ data: null, error: { code: "INDIVIDUAL_CONFIRMATION_REQUIRED", message: "Amber and red fields must be confirmed individually" }, meta: { requestId: req.id } });
       const before = extraction.toObject();
       const changedFields = new Set(requested.map(({ field_name }) => field_name));
       for (const [index, field] of selected.entries()) {

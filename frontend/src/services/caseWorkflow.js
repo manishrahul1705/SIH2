@@ -33,9 +33,19 @@ export const caseWorkflowApi = {
   getApplicationTypes: () => request("/application-types"),
   previewChecklist: (body) => request("/checklist/preview", { method: "POST", body }),
   createDraft: (body) => request("/cases", { method: "POST", body }),
+  listCases: ({ page = 1, pageSize = 100 } = {}) => request(`/cases?page=${page}&pageSize=${pageSize}`),
+  listDocuments: ({ page = 1, pageSize = 100 } = {}) => request(`/documents?page=${page}&pageSize=${pageSize}`),
+  listAlerts: ({ page = 1, pageSize = 100 } = {}) => request(`/alerts?page=${page}&pageSize=${pageSize}`),
+  getDocumentDownloadUrl: (id) => `${API_BASE_URL}/documents/${encodeURIComponent(id)}/download`,
+  updateAlertStatus: (id, status) => request(`/alerts/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: { status },
+  }),
+  getCaseDocuments: (id) => request(`/cases/${encodeURIComponent(id)}/documents`),
   updateDraft: (id, body) => request(`/cases/${encodeURIComponent(id)}`, { method: "PUT", body }),
   getCase: (id) => request(`/cases/${encodeURIComponent(id)}`),
   getChecklist: (id) => request(`/cases/${encodeURIComponent(id)}/checklist`),
+  analyzeCaseDocuments: (id) => request(`/cases/${encodeURIComponent(id)}/documents/analyze`, { method: "POST", body: {} }),
   uploadDocument: (id, slotId, file) => {
     const formData = new FormData();
     formData.append("doc_type_slot", slotId);
@@ -51,6 +61,7 @@ export const caseWorkflowApi = {
     method: "POST",
     body: { expectedVersion },
   }),
+  recordDecision: (id, body) => request(`/cases/${encodeURIComponent(id)}/decision`, { method: "POST", body }),
 };
 
 const completedAnalysisStatuses = new Set([
@@ -77,4 +88,15 @@ export async function waitForDocumentAnalysis(documentId, {
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+}
+
+export async function waitForDocumentBatch(documents, { onProgress, ...options } = {}) {
+  let completed = 0;
+  const total = documents.length;
+  return Promise.all(documents.map(async (document) => {
+    const result = await waitForDocumentAnalysis(document.document_id, options);
+    completed += 1;
+    onProgress?.({ completed, total, document });
+    return { document, result };
+  }));
 }

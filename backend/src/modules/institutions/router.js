@@ -11,15 +11,31 @@ const patchSchema = z.object({
   contact_phone: z.string().max(32).optional(),
 }).strict();
 
+async function institutionIdForUser(user) {
+  if (user.role === "INSTITUTION") {
+    if (user.institution_id) return user.institution_id;
+    return (await Institution.findOne({ contact_email: user.email, deleted_at: null }).select("_id"))?._id || null;
+  }
+  if (user.role === "STUDENT" || user.role === "FACULTY") {
+    const Model = user.role === "STUDENT" ? Student : Faculty;
+    return (await Model.findOne({
+      email: user.email,
+      ...(user.institution_id ? { institution_id: user.institution_id } : {}),
+      deleted_at: null,
+    }).select("institution_id"))?.institution_id || null;
+  }
+  if (user.institution_id) return user.institution_id;
+  return null;
+}
+
 export function institutionsRouter() {
   const router = express.Router();
   router.use(authenticate);
-  router.get("/", requireRole("ADMIN", "INSTITUTION", "SCRUTINY_OFFICER", "EVC", "SAC_SHC", "BUREAU_OFFICER", "SENIOR_AUTHORITY"), async (req, res, next) => {
+  router.get("/", requireRole("ADMIN", "INSTITUTION", "STUDENT", "FACULTY", "SCRUTINY_OFFICER", "EVC", "SAC_SHC", "BUREAU_OFFICER", "SENIOR_AUTHORITY"), async (req, res, next) => {
     try {
       const filter = { deleted_at: null };
-      if (req.user.role === "INSTITUTION") {
-        let institutionId = req.user.institution_id;
-        if (!institutionId) institutionId = (await Institution.findOne({ contact_email: req.user.email }).select("_id"))?._id;
+      if (["INSTITUTION", "STUDENT", "FACULTY"].includes(req.user.role)) {
+        const institutionId = await institutionIdForUser(req.user);
         if (!institutionId) return res.json({ data: [], error: null, meta: { requestId: req.id } });
         filter._id = institutionId;
       } else if (req.user.role !== "ADMIN" && req.user.region) filter.region = req.user.region;
@@ -27,12 +43,11 @@ export function institutionsRouter() {
       return res.json({ data: items, error: null, meta: { requestId: req.id } });
     } catch (error) { return next(error); }
   });
-  router.get("/:id", requireRole("ADMIN", "INSTITUTION", "SCRUTINY_OFFICER", "EVC", "SAC_SHC", "BUREAU_OFFICER", "SENIOR_AUTHORITY"), validate(z.object({ id }).strict(), "params"), async (req, res, next) => {
+  router.get("/:id", requireRole("ADMIN", "INSTITUTION", "STUDENT", "FACULTY", "SCRUTINY_OFFICER", "EVC", "SAC_SHC", "BUREAU_OFFICER", "SENIOR_AUTHORITY"), validate(z.object({ id }).strict(), "params"), async (req, res, next) => {
     try {
       const filter = { _id: req.params.id, deleted_at: null };
-      if (req.user.role === "INSTITUTION") {
-        let own = req.user.institution_id;
-        if (!own) own = (await Institution.findOne({ contact_email: req.user.email }).select("_id"))?._id;
+      if (["INSTITUTION", "STUDENT", "FACULTY"].includes(req.user.role)) {
+        const own = await institutionIdForUser(req.user);
         if (!own || own.toString() !== req.params.id) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Institution not found" }, meta: { requestId: req.id } });
       } else if (req.user.role !== "ADMIN" && req.user.region) filter.region = req.user.region;
       const institution = await Institution.findOne(filter).lean();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, Bell, BookOpen, Building2, ClipboardList, FileCheck2, FilePlus2,
+  BookOpen, Building2, ClipboardList, FileCheck2, FilePlus2,
   GraduationCap, LogOut, Menu, MessageSquareWarning, ShieldCheck, Users, X,
 } from "lucide-react";
 import { StakeholderProvider, useStakeholder } from "../../context/StakeholderContext";
@@ -37,7 +37,6 @@ function StakeholderShell() {
   const location = useLocation();
   const faculty = role === "faculty";
   const links = faculty ? FACULTY_NAV : STUDENT_NAV;
-  const quickPath = `/${role}/complaints/new`;
   const displayName = user?.name || user?.email || (faculty ? "Faculty member" : "Student");
 
   async function signOut() {
@@ -57,13 +56,9 @@ function StakeholderShell() {
       </Link>
       <div className="stakeholder-header-actions">
         <span className="stakeholder-role-select">{faculty ? "Faculty" : "Student"}</span>
-        <Link className="stakeholder-quick-complaint" to={quickPath}>
-          <AlertTriangle size={16} /><span>Quick Complaint / Whistleblower</span>
-        </Link>
         <button className="stakeholder-menu-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle stakeholder navigation">
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <span className="stakeholder-notification" title="Demo notifications"><Bell size={18} /><i>2</i></span>
         <span className="stakeholder-user-avatar" aria-label={displayName}>{displayName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
         <button className="stakeholder-role-select" onClick={signOut}><LogOut size={15} /> Sign out</button>
       </div>
@@ -90,16 +85,16 @@ function StakeholderShell() {
           ))}
         </nav>
         <div className="stakeholder-sidebar-footer">
-          <span className="stakeholder-readonly"><ShieldCheck size={16} /> Public / demo view</span>
-          <small>Demo institution · 2026-27</small>
+          <span className="stakeholder-readonly"><ShieldCheck size={16} /> Authenticated portal</span>
+          <small>Backend records only</small>
         </div>
       </aside>
       <main className="stakeholder-main">
         <div className="stakeholder-breadcrumb"><span>Stakeholder Portal</span><span>/</span><strong>{TITLES[location.pathname] || "Portal"}</strong></div>
         <Outlet />
         <footer className="stakeholder-footer">
-          <span>ApprovalTrack · Fictional stakeholder demo</span>
-          <span>Complaints and reports do not change scores, clocks, or application routing.</span>
+          <span>ApprovalTrack · Student & Faculty Portal</span>
+          <span>Unavailable workflows are identified and are not simulated.</span>
         </footer>
       </main>
     </div>

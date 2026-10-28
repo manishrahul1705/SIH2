@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildChecklist, CHECKLIST_SLOTS, missingChecklistItems } from "../src/engine/checklist.js";
+import { buildChecklist, CHECKLIST_SLOTS, DEFAULT_APPLICABILITY, missingChecklistItems, normalizeApplicability } from "../src/engine/checklist.js";
 import { buildCaseRoute, returnTargetIsEarlier } from "../src/engine/routes.js";
 import { computeActionScore, projectActionScore } from "../src/engine/score.js";
 import { orderOfficerQueue } from "../src/engine/queue.js";
@@ -14,8 +14,21 @@ import {
 } from "../src/engine/timeRules.js";
 import { addMonthsAnniversary, computeLease, leaseEndDate, monthsBetweenLease, reconcileLease } from "../src/engine/leaseMath.js";
 import { auditEntryHash, verifyAuditEntries } from "../src/middleware/audit.js";
+import { caseFilterForUser } from "../src/modules/cases/router.js";
 
 describe("workflow routes and checklist configuration", () => {
+  it("keeps drafts out of every non-institution user's case scope", async () => {
+    const officerFilter = await caseFilterForUser({ role: "SCRUTINY_OFFICER", _id: "officer", region: "South" });
+    const adminFilter = await caseFilterForUser({ role: "ADMIN", _id: "admin" });
+    const institutionId = "507f1f77bcf86cd799439011";
+    const institutionFilter = await caseFilterForUser({ role: "INSTITUTION", institution_id: institutionId });
+
+    expect(officerFilter.$and).toContainEqual({ status: { $ne: "draft" } });
+    expect(adminFilter.$and).toContainEqual({ status: { $ne: "draft" } });
+    expect(institutionFilter).toMatchObject({ institutionId });
+    expect(institutionFilter.$and).toBeUndefined();
+  });
+
   it("builds deterministic policy routes for all seven application types", () => {
     const expectedEvc = new Set(["new_institution", "conversion_diploma_to_degree", "collaboration_twinning", "restoration_of_intake"]);
     for (const type of ["new_institution", "new_course", "increase_in_intake", "extension_of_approval", "conversion_diploma_to_degree", "collaboration_twinning", "restoration_of_intake"]) {
@@ -47,6 +60,40 @@ describe("workflow routes and checklist configuration", () => {
     ])).toHaveLength(2);
     expect(checklist.find((item) => item.slotId === "collaboration_agreement")).toMatchObject({ status: "not_applicable" });
     expect(CHECKLIST_SLOTS.find((item) => item.slotId === "lease")).toMatchObject({ tracked: true, hasValidity: true, minLeaseTermYears: null });
+  });
+
+  it("defaults every application answer to No and shows conditional documents after Yes", () => {
+    const defaults = normalizeApplicability({});
+    expect(defaults).toEqual(DEFAULT_APPLICABILITY);
+
+    const noAnswers = buildChecklist("new_course", defaults);
+    expect(noAnswers.find((item) => item.slotId === "lease")).toMatchObject({ status: "not_applicable", required: false, reviewRequired: false });
+    expect(noAnswers.find((item) => item.slotId === "structural")).toMatchObject({ status: "not_applicable", required: false, reviewRequired: false });
+
+    const yesAnswers = normalizeApplicability({ landIsLeased: true, buildingOver30: true });
+    const yesChecklist = buildChecklist("new_course", yesAnswers);
+    expect(yesChecklist.find((item) => item.slotId === "lease")).toMatchObject({ status: "missing", required: true, reviewRequired: false });
+    expect(yesChecklist.find((item) => item.slotId === "structural")).toMatchObject({ status: "missing", required: true, reviewRequired: false });
+  });
+
+  it("converts legacy building age answers to the new Yes/No applicability flag", () => {
+    expect(normalizeApplicability({ buildingAgeYears: 31 }).buildingOver30).toBe(true);
+    expect(normalizeApplicability({ buildingAgeYears: 30 }).buildingOver30).toBe(false);
+  });
+
+  it("uses the new building Yes/No answer with a previously saved policy condition", () => {
+    const structural = CHECKLIST_SLOTS.find((item) => item.slotId === "structural");
+    const legacyPolicySlot = {
+      ...structural,
+      conditions: { ...structural.conditions, new_course: "buildingAgeYears>30" },
+    };
+    const checklist = buildChecklist(
+      "new_course",
+      normalizeApplicability({ buildingOver30: true }),
+      [],
+      [legacyPolicySlot],
+    );
+    expect(checklist[0]).toMatchObject({ required: true, reviewRequired: false });
   });
 });
 

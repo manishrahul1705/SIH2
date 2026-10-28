@@ -6,7 +6,7 @@ import { authenticate } from "../../middleware/auth.js";
 import { withTransaction, writeAudit } from "../../middleware/audit.js";
 import { validate } from "../../middleware/validate.js";
 import { CaseDecision, CaseObligation, CaseRecord, CaseStageHistory, Institution, OutboxEvent, Policy, User } from "../../models/index.js";
-import { APPLICATION_TYPES, buildChecklist, missingChecklistItems } from "../../engine/checklist.js";
+import { APPLICATION_TYPES, buildChecklist, missingChecklistItems, normalizeApplicability } from "../../engine/checklist.js";
 import { buildCaseRoute, returnTargetIsEarlier } from "../../engine/routes.js";
 import { dueStatus } from "../../engine/timeRules.js";
 import { logger } from "../../config/logger.js";
@@ -15,13 +15,14 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 const applicabilitySchema = z.object({
   landIsLeased: z.boolean().optional(),
   newAreaAdded: z.boolean().optional(),
+  buildingOver30: z.boolean().optional(),
   buildingAgeYears: z.number().min(0).max(500).optional(),
   claimsAccreditation: z.boolean().optional(),
   landChanged: z.boolean().optional(),
   premisesShared: z.boolean().optional(),
   premisesUsed: z.boolean().optional(),
   affiliatingBodyRequired: z.boolean().optional(),
-}).strict();
+}).strict().transform(normalizeApplicability);
 const createCaseSchema = z.object({
   applicationType: z.enum(APPLICATION_TYPES),
   applicability: applicabilitySchema.default({}),
@@ -120,8 +121,9 @@ async function institutionIdFor(user) {
   return (await Institution.findOne({ contact_email: user.email, deleted_at: null }).select("_id"))?._id || null;
 }
 
-async function caseFilterForUser(user) {
+export async function caseFilterForUser(user) {
   const filter = { deletedAt: null };
+  if (user.role !== "INSTITUTION") filter.$and = [{ status: { $ne: "draft" } }];
   if (user.role === "ADMIN") return filter;
   if (user.role === "INSTITUTION") {
     const institutionId = await institutionIdFor(user);
@@ -141,6 +143,7 @@ export async function scopedCase(caseId, user) {
   if (!mongoose.isValidObjectId(caseId)) return null;
   const record = await CaseRecord.findOne({ _id: caseId, deletedAt: null });
   if (!record) return null;
+  if (record.status === "draft" && user.role !== "INSTITUTION") return null;
   if (user.role === "ADMIN") return record;
   if (user.role === "INSTITUTION") {
     const institutionId = await institutionIdFor(user);
@@ -303,20 +306,19 @@ export function casesRouter() {
 
   router.get("/cases", authenticate, validate(listSchema, "query"), async (req, res, next) => {
     try {
-      const filter = { deletedAt: null };
-      if (req.user.role === "INSTITUTION") {
-        const institutionId = await institutionIdFor(req.user);
-        if (!institutionId) return respond(res, req, [], 200, { total: 0, page: req.query.page, pageSize: req.query.pageSize });
-        filter.institutionId = institutionId;
-      } else if (req.user.role === "SCRUTINY_OFFICER") filter.$or = [{ region: req.user.region }, { holderId: req.user._id }];
-      else if (["EVC", "SAC_SHC"].includes(req.user.role)) filter.holderId = req.user._id;
-      else if (["BUREAU_OFFICER", "SENIOR_AUTHORITY"].includes(req.user.role) && req.user.region) filter.region = req.user.region;
-      else if (req.user.role !== "ADMIN") return deny(req, res, { message: "This role cannot view workflow cases", entityId: "case-list" });
-      if (req.query.status) filter.status = req.query.status;
+      const filter = await caseFilterForUser(req.user);
+      if (!filter) return deny(req, res, { message: "This role cannot view workflow cases", entityId: "case-list" });
+      if (req.user.role === "INSTITUTION" && !filter.institutionId) {
+        return respond(res, req, [], 200, { total: 0, page: req.query.page, pageSize: req.query.pageSize });
+      }
+      if (req.query.status) {
+        if (filter.$and) filter.$and.push({ status: req.query.status });
+        else filter.status = req.query.status;
+      }
       if (req.query.applicationType) filter.applicationType = req.query.applicationType;
       const { page, pageSize } = req.query;
       const [items, total] = await Promise.all([
-        CaseRecord.find(filter).sort({ updatedAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
+        CaseRecord.find(filter).populate("institutionId", "name").sort({ updatedAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean(),
         CaseRecord.countDocuments(filter),
       ]);
       return respond(res, req, items, 200, { page, pageSize, total, pages: Math.ceil(total / pageSize) });

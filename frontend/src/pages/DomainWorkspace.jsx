@@ -1,37 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { Activity, AlertTriangle, ArrowRight, Bell, Check, CheckCircle2, ClipboardCheck, Clock3, Download, FileCheck2, FileText, Filter, MapPin, Plus, RefreshCw, ShieldCheck, UploadCloud, Users } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, Bell, Check, CheckCircle2, ClipboardCheck, Clock3, Download, FileCheck2, FileText, MapPin, Plus, RefreshCw, ShieldCheck, UploadCloud, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "../services/api";
 import { adminApi, adminRoleLabels } from "../services/admin";
-import { caseWorkflowApi, waitForDocumentAnalysis } from "../services/caseWorkflow";
+import { caseWorkflowApi, waitForDocumentBatch } from "../services/caseWorkflow";
+import DocumentsLive from "./DocumentsLive";
+import NotificationsLive from "./NotificationsLive";
+import QueueLive from "./QueueLive";
+import UndertakingsLive from "./UndertakingsLive";
+import EvcVisitsLive from "./EvcVisitsLive";
+import PolicyLive from "./PolicyLive";
+import RegionLive from "./RegionLive";
+import ReportsLive from "./ReportsLive";
+import AIServiceLive from "./AIServiceLive";
+import DecisionsLive from "./DecisionsLive";
+import HearingsLive from "./HearingsLive";
+import DeficienciesLive from "./DeficienciesLive";
 import { useAppStore } from "../store/useAppStore";
 import { buildRoute, routeForApplication } from "../utils/routeBuilder";
 import { calculateScore, demoScoreInput } from "../utils/scoreCalculator";
 import { Badge, Card, ConfirmDialog, DataTable, DeadlineBadge, AIFieldRow, FileDropzone, OwnershipClockBar, ProjectedScoreCard, ReasonDialog, ScoreBreakdownTable, ScoreGauge, StageStepper, StatCard, TabsView, Toast } from "../components/ui/primitives";
 
 export const pageSettings = {
-  dashboard: { title: "Institution dashboard", description: "A clear view of your applications, obligations and next actions.", eyebrow: "DEMO INSTITUTE", roles: ["Institution user"] },
+  dashboard: { title: "Institution dashboard", description: "A clear view of your applications, obligations and next actions.", eyebrow: "INSTITUTION WORKSPACE", roles: ["Institution user"] },
   application: { title: "New application", description: "Prepare an application for submission under the policy in force.", eyebrow: "APPLICATION WORKSPACE", roles: ["Institution user"] },
   cases: { title: "My cases", description: "Follow each application through its policy-defined stages.", eyebrow: "CASE REGISTER", roles: ["Institution user", "Scrutiny / Regional officer"] },
-  documents: { title: "Documents and validity", description: "Manage document validity, submissions and separate official verification.", eyebrow: "DOCUMENT REGISTER", roles: ["Institution user"] },
-  documentReview: { title: "Document upload and AI review", description: "Review proposed certificate fields. Nothing starts until a person confirms the values.", eyebrow: "DOCUMENT REVIEW", roles: ["Institution user", "Scrutiny / Regional officer"] },
-  undertakings: { title: "Undertakings", description: "Track submission, verification, due status and closure as separate states.", eyebrow: "OBLIGATION REGISTER", roles: ["Institution user"] },
+  documents: { title: "Documents and validity", description: "View documents linked to your institution’s applications.", eyebrow: "DOCUMENT REGISTER", roles: ["Institution user"] },
+  documentReview: { title: "Evidence documents", description: "View documents in your authorized case scope.", eyebrow: "DOCUMENT REGISTER", roles: ["Institution user", "Scrutiny / Regional officer"] },
+  undertakings: { title: "Undertakings", description: "Review actual undertaking records and due dates.", eyebrow: "OBLIGATION REGISTER", roles: ["Institution user"] },
   deficiencies: { title: "Deficiency responses", description: "Respond to returned items with evidence and a written explanation.", eyebrow: "RE-SCRUTINY", roles: ["Institution user"] },
   notifications: { title: "Notifications", description: "Review obligation reminders and escalations. Acknowledgement does not close an obligation.", eyebrow: "ALERT CENTRE", roles: ["All"] },
-  audit: { title: "Audit trail", description: "Review recorded actions, state changes and denied attempts.", eyebrow: "SYSTEM RECORD", roles: ["Oversight"] },
+  audit: { title: "Audit trail", description: "Review recorded backend audit events.", eyebrow: "SYSTEM RECORD", roles: ["Admin"] },
   queue: { title: "My queue", description: "Officer-held work, ordered by urgency and service window.", eyebrow: "OFFICER WORKSPACE", roles: ["Scrutiny / Regional officer"] },
-  caseControl: { title: "Case detail and stage control", description: "Review stage evidence, ownership time and policy route.", eyebrow: "CASE AT-2026-0040", roles: ["Scrutiny / Regional officer", "Institution user"] },
+  caseControl: { title: "Case detail and stage control", description: "Review stage evidence, ownership and policy route.", eyebrow: "CASE WORKSPACE", roles: ["Scrutiny / Regional officer", "Institution user"] },
   verification: { title: "Verification", description: "Verify institution-submitted evidence as a separate official action.", eyebrow: "VERIFICATION QUEUE", roles: ["Scrutiny / Regional officer"] },
-  evc: { title: "EVC queue and scheduling", description: "Manage queued visits, schedules and report submissions.", eyebrow: "EXPERT VISIT COMMITTEE", roles: ["EVC member", "Scrutiny / Regional officer"] },
-  hearings: { title: "Hearings and appeals", description: "Review submitted reports and record a reasoned recommendation.", eyebrow: "SAC / SHC", roles: ["SAC/SHC member"] },
-  decisions: { title: "Decisions", description: "Record a final decision as the competent authority.", eyebrow: "COMPETENT AUTHORITY", roles: ["Competent authority"] },
+  evc: { title: "EVC visits", description: "Review visit records assigned to your account.", eyebrow: "EXPERT VISIT COMMITTEE", roles: ["EVC member", "Scrutiny / Regional officer"] },
+  hearings: { title: "Committee cases", description: "Review cases assigned to SHC or SAC stages.", eyebrow: "SAC / SHC", roles: ["SAC/SHC member"] },
+  decisions: { title: "Decisions", description: "Record a final decision for cases whose configured route is complete.", eyebrow: "COMPETENT AUTHORITY", roles: ["Competent authority"] },
   region: { title: "Region dashboard", description: "Compare ageing, workload and bottlenecks by ownership and region.", eyebrow: "REGIONAL OVERSIGHT", roles: ["Senior authority", "Competent authority"] },
-  reports: { title: "Reports", description: "Build operational reports from the demo register.", eyebrow: "REPORTING", roles: ["Senior authority", "Competent authority"] },
-  policy: { title: "Policy and stages", description: "Review signed-off policy versions and configure draft routes.", eyebrow: "ADMINISTRATION", roles: ["Admin"] },
+  reports: { title: "Reports", description: "Review backend analytics for applications and institutions.", eyebrow: "REPORTING", roles: ["Senior authority", "Competent authority"] },
+  policy: { title: "Policy and stages", description: "Review policy versions stored in the backend.", eyebrow: "ADMINISTRATION", roles: ["Admin"] },
   alertRules: { title: "Alert rules", description: "Review and update backend validation rules.", eyebrow: "ADMINISTRATION", roles: ["Admin"] },
   aiService: { title: "AI service status", description: "Control AI availability. Manual entry remains available when the service is off.", eyebrow: "ADMINISTRATION", roles: ["Admin"] },
   design: { title: "Design system", description: "Shared accessible components, states and product tokens.", eyebrow: "COMPONENT LIBRARY", roles: ["Admin"] },
@@ -46,7 +58,16 @@ const applicationTypeLabels = {
   collaboration_twinning: "Collaboration or twinning programme",
   restoration_of_intake: "Restoration of intake",
 };
-const stages = ["Submitted", "Self-disclosure", "Scrutiny", "Re-Scrutiny", "Regional Committee", "EVC", "SHC", "SAC", "Decision"];
+const defaultApplicability = {
+  landIsLeased: false,
+  newAreaAdded: false,
+  buildingOver30: false,
+  claimsAccreditation: false,
+  landChanged: false,
+  premisesShared: false,
+  premisesUsed: false,
+  affiliatingBodyRequired: false,
+};
 const MODEL = "M2 Field extraction · v1.4";
 
 function PageHeading({ config, action }) {
@@ -59,34 +80,24 @@ function BusyState({ error, onRetry }) {
 }
 
 function Dashboard({ data, reload }) {
-  const score = useAppStore((state) => state.score);
-  const announcement = useAppStore((state) => state.scoreAnnouncement);
-  const simulate = useAppStore((state) => state.simulateFireRenewal);
-  const renewalSimulated = useAppStore((state) => state.fireRenewalSimulated);
-  const confirmLease = useAppStore((state) => state.confirmLease);
-  const [breakdown, setBreakdown] = useState(false);
-  const [leaseDialog, setLeaseDialog] = useState(false);
-  const [message, setMessage] = useState("");
-  const deductions = useAppStore((state) => state.deductions);
-  const activeScore = calculateScore({ ...demoScoreInput, deductions });
   const required = data.undertakings.filter((item) => item.submission === "Not submitted").slice(0, 4);
   return <div className="dashboard-page">
-    {data.documents.some((document) => document.type === "Structural stability" && !document.validTo) && <div className="alert alert-warning"><AlertTriangle size={17} /><strong>Assessment incomplete.</strong> Some required validity data is missing.</div>}
-    <div className="dashboard-score-row">
-      <Card title="Your Action Score" description="Reflects actions within the institution's control." className="score-card"><ScoreGauge score={score} onBreakdown={() => setBreakdown(true)} /><div className="score-note"><ShieldCheck size={15} /> Officer delay does not reduce your score.</div></Card>
-      <ProjectedScoreCard score={data.projectedScore.score} date="25 November 2026" current={score} />
-      <div className="stat-grid compact-stats"><StatCard label="Open undertakings" value={data.summary.openUndertakings} note={`${data.summary.undertakingsDueIn7Days} due within 7 days`} icon={ClipboardCheck} /><StatCard label="Documents expiring in 30 days" value={data.summary.documentsExpiringIn30Days} note="Renewal action needed" icon={FileCheck2} /><StatCard label="Cases in progress" value={data.summary.casesInProgress} note="Across 4 stages" icon={Activity} /><StatCard label="Waiting on officers" value={data.summary.waitingOnOfficers} note="Does not lower your score" icon={Clock3} /></div>
+    <div className="stat-grid compact-stats">
+      <StatCard label="Applications" value={data.summary.applications} icon={FileText} />
+      <StatCard label="Cases in progress" value={data.summary.casesInProgress} icon={Activity} />
+      <StatCard label="Open undertakings" value={data.summary.openUndertakings} note={`${data.summary.undertakingsDueIn7Days} due within 7 days`} icon={ClipboardCheck} />
+      <StatCard label="Documents expiring in 30 days" value={data.summary.documentsExpiringIn30Days} icon={FileCheck2} />
+      <StatCard label="Open alerts" value={data.summary.openAlerts} icon={Bell} />
     </div>
     <div className="dashboard-columns">
-      <Card title="What you need to do" description="Institution-held obligations, sorted by urgency." action={<Link className="text-link" to="/undertakings">View all</Link>}>
-        <div className="action-list">{required.map((item) => <div className="action-row" key={item.id}><span className="action-icon warning"><AlertTriangle size={16} /></span><div className="action-copy"><strong>{item.title}</strong><small>{item.caseId} · Institution action</small></div><DeadlineBadge deadline={item.dueDate} now={new Date("2026-10-26T12:00:00")} /><Link className="button button-secondary button-small" to="/undertakings">Open</Link></div>)}</div>
+      <Card title="Institution actions" description="Open undertakings recorded for your applications." action={<Link className="text-link" to="/undertakings">View all</Link>}>
+        {required.length ? <div className="action-list">{required.map((item) => <div className="action-row" key={item.id}><span className="action-icon warning"><AlertTriangle size={16} /></span><div className="action-copy"><strong>{item.title}</strong><small>{item.caseId}</small></div><DeadlineBadge deadline={item.dueDate} /><Link className="button button-secondary button-small" to="/undertakings">Open</Link></div>)}</div> : <p className="muted">No open undertakings.</p>}
       </Card>
-      <Card title="Waiting on an officer" description="These stages are currently officer- or committee-held."><div className="note info-note"><InfoIcon />This does not lower your score.</div>{data.cases.filter((item) => ["Officer", "Committee", "Competent authority"].includes(item.holder)).slice(0, 4).map((item) => <div className="compact-case-row" key={item.id}><div><strong>{item.stage}</strong><small>{item.id} · {item.holder}</small></div><Badge variant="info">{item.officerDays} days</Badge></div>)}</Card>
+      <Card title="Recently updated cases" description="Applications in your authorized case scope.">
+        {data.cases.slice(0, 5).map((item) => <div className="compact-case-row" key={item.caseId}><div><strong>{item.id}</strong><small>{item.type} · {item.stage}</small></div><Badge variant={item.status === "Approved" ? "success" : item.status === "Action required" ? "warning" : "info"}>{item.status}</Badge></div>)}
+        {!data.cases.length && <p className="muted">No cases are available in your scope.</p>}
+      </Card>
     </div>
-    <Card title="Action Score breakdown" description={`${activeScore.totalDeductions} points deducted across institution-controlled factors.`} action={<button className="button button-secondary button-small" disabled={renewalSimulated} onClick={() => { simulate(); setMessage("Renewal upload simulated. Score increased by 7 points; verification will not change it."); }}>{renewalSimulated ? "Fire renewal simulated" : "Simulate: upload fire renewal"}</button>}><p className="score-equation">100 base points − {activeScore.totalDeductions} deductions = <strong aria-live="polite">{score}</strong> Action Score</p><ScoreBreakdownTable deductions={activeScore.deductions.reduce((result, item, index) => ({ ...result, [["undertakings", "nonLeaseDocuments", "lease", "evcReadiness", "history"][index]]: item.points }), {})} onLeaseConfirm={() => setLeaseDialog(true)} /></Card>
-    <p className="screen-reader-live" aria-live="polite">{announcement}</p>
-    <ConfirmDialog open={leaseDialog} onOpenChange={setLeaseDialog} title="Confirm lease flag" description="This will deduct 10 points from the institution's score." onConfirm={() => { confirmLease(); setLeaseDialog(false); setMessage("Lease flag confirmed. 10 points deducted."); }} /><Toast message={message} onClose={() => setMessage("")} />
-    {breakdown && <div className="drawer-backdrop" onClick={() => setBreakdown(false)}><aside className="breakdown-drawer" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setBreakdown(false)}>Close</button><h2>How the score is calculated</h2><p>Only institution-controlled obligations affect this score. Officer and committee waiting time is excluded.</p><ScoreBreakdownTable deductions={activeScore.deductions.reduce((result, item, index) => ({ ...result, [["undertakings", "nonLeaseDocuments", "lease", "evcReadiness", "history"][index]]: item.points }), {})} onLeaseConfirm={() => setLeaseDialog(true)} /></aside></div>}
   </div>;
 }
 
@@ -95,19 +106,17 @@ function InfoIcon() { return <ShieldCheck size={17} />; }
 function NewApplication({ data, setMessage }) {
   const [applicationTypes, setApplicationTypes] = useState(Object.entries(applicationTypeLabels).map(([id, label]) => ({ id, label })));
   const [applicationType, setApplicationType] = useState("");
-  const [applicability, setApplicability] = useState({});
+  const [applicability, setApplicability] = useState(defaultApplicability);
   const [preview, setPreview] = useState(null);
   const [checklist, setChecklist] = useState([]);
   const [caseRecord, setCaseRecord] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState({});
-  const [busySlot, setBusySlot] = useState("");
   const [busyAction, setBusyAction] = useState("");
   const [pageError, setPageError] = useState("");
   const [pageNotice, setPageNotice] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [extractions, setExtractions] = useState({});
   const [fieldValues, setFieldValues] = useState({});
-  const [reviewingDocument, setReviewingDocument] = useState("");
   const [analysisWait, setAnalysisWait] = useState(null);
 
   useEffect(() => {
@@ -197,44 +206,84 @@ function NewApplication({ data, setMessage }) {
     }
   }
 
-  async function uploadSlot(slot) {
-    const file = selectedFiles[slot.slotId];
-    if (!file || !applicationType) return;
-    setBusySlot(slot.slotId);
-    setAnalysisWait({ fileName: file.name, phase: "uploading" });
+  async function uploadAndDetectDocuments() {
+    if (!applicationType || busyAction === "detect-all") return;
+    const filesToUpload = applicableSlots
+      .filter((slot) => selectedFiles[slot.slotId])
+      .map((slot) => ({ slot, file: selectedFiles[slot.slotId] }));
+    const existingDocuments = applicableSlots.filter((slot) => slot.documentId);
+    if (!filesToUpload.length && !existingDocuments.length) return;
+    setBusyAction("detect-all");
+    setAnalysisWait({
+      phase: filesToUpload.length ? "uploading" : "analyzing",
+      current: 0,
+      total: filesToUpload.length || existingDocuments.length,
+      fileName: filesToUpload[0]?.file.name || "",
+    });
     setPageError("");
     setPageNotice("");
     try {
       const draft = await ensureDraft();
-      const result = await caseWorkflowApi.uploadDocument(draft._id, slot.slotId, file);
-      if (!result.document_id) throw new Error("The upload completed without a document reference. Refresh the case before retrying.");
-      await refreshCase(draft._id);
-      setAnalysisWait({ fileName: file.name, phase: "analyzing" });
-      const analysis = await waitForDocumentAnalysis(result.document_id);
-      setExtractions((current) => ({ ...current, [result.document_id]: analysis }));
-      setReviewingDocument(result.document_id);
-      for (const field of analysis.extraction?.fields || []) {
-        setFieldValues((current) => ({
-          ...current,
-          [`${result.document_id}:${field.field_name}`]: field.confirmed_value ?? field.ai_value ?? "",
-        }));
+      for (const [index, { slot, file }] of filesToUpload.entries()) {
+        setAnalysisWait({
+          phase: "uploading",
+          current: index + 1,
+          total: filesToUpload.length,
+          fileName: file.name,
+        });
+        const uploaded = await caseWorkflowApi.uploadDocument(draft._id, slot.slotId, file);
+        if (!uploaded.document_id) {
+          throw new Error(`${file.name} did not return a document reference. Refresh the case before retrying.`);
+        }
+        setSelectedFiles((current) => ({ ...current, [slot.slotId]: null }));
       }
       await refreshCase(draft._id);
-      setSelectedFiles((current) => ({ ...current, [slot.slotId]: null }));
-      if (analysis.document.status === "AI_FAILED") {
-        const code = analysis.extraction?.processing_error_code;
-        setPageError(`AI analysis could not complete${code ? ` (${code})` : ""}. The application remains a draft; review the document or upload a clearer file.`);
-      } else {
-        const failedRules = (analysis.extraction?.rule_results_json || []).filter((rule) => rule?.passed === false);
-        setPageNotice(failedRules.length
-          ? `AI analysis completed for ${file.name} with ${failedRules.length} finding${failedRules.length === 1 ? "" : "s"}. Review the reasons below; this does not automatically reject your application.`
-          : `AI analysis completed for ${file.name}. Review and confirm the extracted suggestions below.`);
-      }
-      setMessage(`${slot.label} uploaded and analyzed.`);
+      setAnalysisWait({
+        phase: "analyzing",
+        current: 0,
+        total: existingDocuments.length + filesToUpload.length,
+        fileName: "",
+      });
+      const batch = await caseWorkflowApi.analyzeCaseDocuments(draft._id);
+      const total = batch.documents.length;
+      setAnalysisWait({ phase: "analyzing", current: 0, total, fileName: "" });
+      const results = await waitForDocumentBatch(batch.documents, {
+        onProgress: ({ completed, document }) => setAnalysisWait({
+          phase: "analyzing",
+          current: completed,
+          total,
+          fileName: document.file_name || document.slot_id || "",
+        }),
+      });
+      setExtractions((current) => {
+        const next = { ...current };
+        for (const { document, result } of results) next[document.document_id] = result;
+        return next;
+      });
+      setFieldValues((current) => {
+        const next = { ...current };
+        for (const { document, result } of results) {
+          for (const field of result.extraction?.fields || []) {
+            const key = `${document.document_id}:${field.field_name}`;
+            if (!Object.hasOwn(next, key)) next[key] = field.confirmed_value ?? field.ai_value ?? "";
+          }
+        }
+        return next;
+      });
+      await refreshCase(draft._id);
+      const failedDocuments = results.filter(({ result }) => result.document.status === "AI_FAILED");
+      const findingCount = results.reduce((count, { result }) => count
+        + (result.extraction?.rule_results_json || []).filter((rule) => rule?.passed === false).length, 0);
+      setPageNotice(failedDocuments.length
+        ? `Detection finished. ${failedDocuments.length} document${failedDocuments.length === 1 ? "" : "s"} could not be analyzed; enter the missing fields below.`
+        : findingCount
+          ? `Detection finished for ${results.length} documents. ${findingCount} AI finding${findingCount === 1 ? "" : "s"} need review below.`
+          : `Detection finished for ${results.length} documents. Review the fields below and save each document once.`);
+      setMessage(`Text detection finished for ${results.length} document${results.length === 1 ? "" : "s"}.`);
     } catch (error) {
       setPageError(error.message);
     } finally {
-      setBusySlot("");
+      setBusyAction("");
       setAnalysisWait(null);
     }
   }
@@ -252,39 +301,18 @@ function NewApplication({ data, setMessage }) {
     }
   }
 
-  async function loadExtraction(documentId) {
-    setReviewingDocument(documentId);
-    if (extractions[documentId]?.extraction) return;
-    setBusyAction(`extract:${documentId}`);
+  async function saveDocumentFields(documentId, fields) {
+    setBusyAction(`save-fields:${documentId}`);
     setPageError("");
     try {
-      const result = await caseWorkflowApi.getExtraction(documentId);
-      setExtractions((current) => ({ ...current, [documentId]: result }));
-      for (const field of result.extraction?.fields || []) {
-        setFieldValues((current) => ({
-          ...current,
-          [`${documentId}:${field.field_name}`]: field.confirmed_value ?? field.ai_value ?? "",
-        }));
-      }
-    } catch (error) {
-      setPageError(error.message);
-    } finally {
-      setBusyAction("");
-    }
-  }
-
-  async function confirmField(documentId, fieldName) {
-    const valueKey = `${documentId}:${fieldName}`;
-    setBusyAction(`confirm:${valueKey}`);
-    setPageError("");
-    try {
-      const result = await caseWorkflowApi.confirmFields(documentId, [{
-        field_name: fieldName,
-        confirmed_value: fieldValues[valueKey] ?? "",
-      }]);
+      const confirmedFields = fields.map((field) => ({
+        field_name: field.field_name,
+        confirmed_value: fieldValues[`${documentId}:${field.field_name}`] ?? field.confirmed_value ?? field.ai_value ?? "",
+      }));
+      const result = await caseWorkflowApi.confirmFields(documentId, confirmedFields, true);
       setExtractions((current) => ({ ...current, [documentId]: result }));
       if (caseRecord) await refreshCase();
-      setPageNotice("Field confirmation has been recorded.");
+      setPageNotice("All fields for this document have been saved together.");
     } catch (error) {
       setPageError(error.message);
     } finally {
@@ -313,20 +341,20 @@ function NewApplication({ data, setMessage }) {
   function setAnswer(name, value) {
     setApplicability((current) => {
       const next = { ...current };
-      if (value === "unknown" || value === "") delete next[name];
-      else if (name === "buildingAgeYears") next[name] = Number(value);
-      else next[name] = value === "yes";
+      next[name] = value === "yes";
       return next;
     });
   }
 
   const applicableSlots = checklist.filter((slot) => slot.required || slot.reviewRequired);
   const missingRequired = checklist.filter((slot) => slot.required && !["confirmed", "verified"].includes(slot.status));
+  const selectedFileCount = applicableSlots.filter((slot) => selectedFiles[slot.slotId]).length;
+  const attachedDocumentCount = applicableSlots.filter((slot) => slot.documentId).length;
   const route = preview?.route || [];
   const conditionQuestions = [
     ["landIsLeased", "Is the institution using leased land?"],
     ["newAreaAdded", "Is new land or area being added?"],
-    ["buildingAgeYears", "What is the age of the building in years?"],
+    ["buildingOver30", "Is the building more than 30 years old?"],
     ["claimsAccreditation", "Is accreditation being claimed?"],
     ["landChanged", "Has the land or ownership changed?"],
     ["premisesShared", "Are the premises shared?"],
@@ -343,6 +371,7 @@ function NewApplication({ data, setMessage }) {
         description="Select an application type to load its document checklist."
         action={caseRecord && <button className="button button-secondary button-small" onClick={() => {
           setCaseRecord(null);
+          setApplicability(defaultApplicability);
           setChecklist(preview?.checklist || []);
           setSelectedFiles({});
           setExtractions({});
@@ -356,7 +385,7 @@ function NewApplication({ data, setMessage }) {
             disabled={Boolean(caseRecord)}
             onChange={(event) => {
               setApplicationType(event.target.value);
-              setApplicability({});
+              setApplicability(defaultApplicability);
               setPreview(null);
               setChecklist([]);
               setSelectedFiles({});
@@ -380,20 +409,13 @@ function NewApplication({ data, setMessage }) {
           {conditionQuestions.map(([name, label]) => (
             <label className="field-label" key={name}>
               {label}
-              {name === "buildingAgeYears"
-                ? <input
-                  type="number"
-                  min="0"
-                  max="500"
-                  value={applicability[name] ?? ""}
-                  placeholder="Not provided"
-                  onChange={(event) => setAnswer(name, event.target.value)}
-                />
-                : <select value={applicability[name] === undefined ? "unknown" : applicability[name] ? "yes" : "no"} onChange={(event) => setAnswer(name, event.target.value)}>
-                  <option value="unknown">Not provided</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>}
+              <select
+                value={applicability[name] ? "yes" : "no"}
+                onChange={(event) => setAnswer(name, event.target.value)}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
             </label>
           ))}
         </div>
@@ -414,6 +436,7 @@ function NewApplication({ data, setMessage }) {
               const extractionResult = documentId ? extractions[documentId] : null;
               const extractedFields = extractionResult?.extraction?.fields || [];
               const failedRules = (extractionResult?.extraction?.rule_results_json || []).filter((rule) => rule?.passed === false);
+              const saved = extractionResult?.document?.status === "CONFIRMED";
               return <article className="case-document-slot" key={slot.slotId}>
                 <div className="case-document-slot-heading">
                   <div>
@@ -431,45 +454,80 @@ function NewApplication({ data, setMessage }) {
                     <input
                       type="file"
                       accept={slot.acceptedFileTypes?.join(",") || "application/pdf,image/jpeg,image/png"}
-                      disabled={Boolean(caseRecord && !["draft", "returned"].includes(caseRecord.status))}
+                      disabled={busyAction === "detect-all" || Boolean(caseRecord && !["draft", "returned"].includes(caseRecord.status))}
                       onChange={(event) => setSelectedFiles((current) => ({ ...current, [slot.slotId]: event.target.files?.[0] || null }))}
                     />
                   </label>
-                  <span className="case-file-name">{selectedFiles[slot.slotId]?.name || "PDF, JPG or PNG · up to 20 MB"}</span>
-                  <button className="button button-primary button-small" disabled={!selectedFiles[slot.slotId] || busySlot === slot.slotId} onClick={() => uploadSlot(slot)}>
-                    {busySlot === slot.slotId ? "Uploading…" : "Upload"}
-                  </button>
+                  <span className="case-file-name">
+                    {selectedFiles[slot.slotId]?.name || (documentId ? "Document uploaded · choose a new file to replace it" : "PDF, JPG or PNG · up to 20 MB")}
+                  </span>
                 </div>
                 {documentId && <div className="case-document-review">
-                  <button className="text-link" disabled={busyAction === `extract:${documentId}`} onClick={() => loadExtraction(documentId)}>
-                    {extractionResult ? "Hide / refresh AI suggestions" : "Review AI suggestions"}
-                  </button>
-                  {reviewingDocument === documentId && extractionResult?.extraction && <div className="case-extraction-fields">
+                  {extractionResult?.extraction && <>
+                    {extractionResult.document?.status === "AI_FAILED" && <div className="case-ai-findings" role="alert">
+                      <strong>Text detection could not complete</strong>
+                      <p>{extractionResult.extraction.processing_error_code || "Enter any fields that were not detected, then save them below."}</p>
+                    </div>}
                     {failedRules.length > 0 && <div className="case-ai-findings" role="status">
                       <strong>AI validation findings</strong>
                       <ul>{failedRules.map((rule, index) => <li key={rule.ruleId || index}>{rule.message || "A validation rule needs review."}</li>)}</ul>
                       <p>Review and correct the document information. AI findings do not automatically reject the application.</p>
                     </div>}
-                    {extractedFields.length ? extractedFields.map((field) => {
+                    <div className="case-extraction-fields">
+                      <p className="case-extraction-intro">Detected fields are suggestions. Fill any blank values, review the entries, then save all fields together.</p>
+                      {extractedFields.map((field) => {
                       const valueKey = `${documentId}:${field.field_name}`;
-                      const confirmed = field.confirmed_value !== null && field.confirmed_value !== undefined;
                       return <div className="case-extraction-field" key={field.field_name}>
-                        <div><strong>{field.field_name.replaceAll("_", " ")}</strong><small>AI suggestion: {field.ai_value || "No suggestion"} · {field.zone} review</small></div>
+                        <div><strong>{field.field_name.replaceAll("_", " ")}</strong><small>
+                          {field.ai_value ? `Detected: ${field.ai_value}` : "Not detected — enter a value if available"}
+                          {field.source_text ? ` · Source: ${field.source_text}` : ""}
+                          {field.ai_value ? ` · ${field.zone} review` : ""}
+                        </small></div>
                         <input
-                          aria-label={`Confirmed ${field.field_name.replaceAll("_", " ")}`}
+                          aria-label={`${field.field_name.replaceAll("_", " ")} for ${slot.label}`}
                           value={fieldValues[valueKey] ?? field.confirmed_value ?? field.ai_value ?? ""}
+                          disabled={saved}
                           onChange={(event) => setFieldValues((current) => ({ ...current, [valueKey]: event.target.value }))}
                         />
-                        <button className="button button-secondary button-small" disabled={confirmed || busyAction === `confirm:${valueKey}`} onClick={() => confirmField(documentId, field.field_name)}>
-                          {confirmed ? "Confirmed" : "Confirm value"}
-                        </button>
                       </div>;
-                    }) : <p className="muted">No fields were extracted. The uploaded document remains available for officer review.</p>}
-                  </div>}
+                      })}
+                      <button
+                        className="button button-secondary button-small case-save-fields"
+                        disabled={!extractedFields.length || saved || busyAction === `save-fields:${documentId}`}
+                        onClick={() => saveDocumentFields(documentId, extractedFields)}
+                      >
+                        {saved ? "All fields saved" : busyAction === `save-fields:${documentId}` ? "Saving fields…" : "Save all fields for this document"}
+                      </button>
+                    </div>
+                    {extractionResult.extraction.extracted_lines?.length > 0 && <details className="case-ocr-text">
+                      <summary>View detected text line by line ({extractionResult.extraction.extracted_lines.length} lines)</summary>
+                      <ol>{extractionResult.extraction.extracted_lines.map((line, index) => <li key={`${documentId}-line-${index}`}>{line}</li>)}</ol>
+                    </details>}
+                  </>}
                 </div>}
               </article>;
             })}</div>
             : <div className="state-card"><FileText size={22} /><h3>No required document slots</h3><p>Based on the answers provided, this application has no documents to upload.</p></div>}
+        {applicableSlots.length > 0 && <div className="case-detect-all">
+          <div>
+            <strong>Upload and detect every selected document together</strong>
+            <span>
+              {selectedFileCount
+                ? `${selectedFileCount} selected file${selectedFileCount === 1 ? "" : "s"} · ${attachedDocumentCount} already uploaded`
+                : `${attachedDocumentCount} uploaded document${attachedDocumentCount === 1 ? "" : "s"} ready for detection`}
+              {" · "}Processing runs one document at a time; this may take a few minutes.
+            </span>
+          </div>
+          <button
+            className="button button-primary"
+            disabled={busyAction === "detect-all" || (!selectedFileCount && !attachedDocumentCount) || Boolean(caseRecord && !["draft", "returned"].includes(caseRecord.status))}
+            onClick={uploadAndDetectDocuments}
+          >
+            {busyAction === "detect-all"
+              ? "Processing all documents…"
+              : selectedFileCount ? "Upload & detect text for all documents" : "Detect text for all documents"}
+          </button>
+        </div>}
         {caseRecord
           ? <div className="case-submit-bar">
             <div>
@@ -501,11 +559,17 @@ function NewApplication({ data, setMessage }) {
     {analysisWait && <div className="case-analysis-backdrop" role="dialog" aria-modal="true" aria-labelledby="case-analysis-title" aria-describedby="case-analysis-description">
       <div className="case-analysis-dialog">
         <RefreshCw className="case-analysis-spinner" size={36} aria-hidden="true" />
-        <h2 id="case-analysis-title">{analysisWait.phase === "uploading" ? "Uploading document" : "Analyzing document"}</h2>
+        <h2 id="case-analysis-title">{analysisWait.phase === "uploading" ? "Uploading selected documents" : "Detecting text in all documents"}</h2>
         <p id="case-analysis-description">{analysisWait.phase === "uploading"
-          ? "Your document is being securely uploaded. Please stay on this page."
-          : "AI is reading the document and checking its contents. This page will update when analysis finishes."}</p>
-        <strong className="case-analysis-filename">{analysisWait.fileName}</strong>
+          ? "Your selected files are being securely uploaded before the batch starts."
+          : "Documents are being read one at a time, line by line. Please stay on this page while fields are extracted."}</p>
+        <strong className="case-analysis-filename">
+          {analysisWait.fileName || `${analysisWait.current} of ${analysisWait.total} documents processed`}
+        </strong>
+        <progress className="case-analysis-progress" value={analysisWait.current} max={Math.max(analysisWait.total, 1)} />
+        <small>{analysisWait.phase === "uploading"
+          ? `Uploading ${analysisWait.current} of ${analysisWait.total}`
+          : `Analyzed ${analysisWait.current} of ${analysisWait.total}`}</small>
         <span className="screen-reader-live" role="status" aria-live="polite">
           {analysisWait.phase === "uploading" ? "Uploading document" : "Document analysis in progress"}
         </span>
@@ -514,27 +578,82 @@ function NewApplication({ data, setMessage }) {
   </div>;
 }
 
-function CaseTable({ data, compact = false }) {
-  const columns = useMemo(() => [
-    { accessorKey: "id", header: "Case ID", cell: ({ row }) => <Link className="mono text-link" to={`/case/${row.original.id}`}>{row.original.id}</Link> },
-    { accessorKey: "institution", header: "Institution" },
-    { accessorKey: "type", header: "Application type" },
-    { accessorKey: "route", header: "Policy route" },
-    { accessorKey: "stage", header: "Current stage" },
-    { accessorKey: "holder", header: "Holder", cell: ({ row }) => <Badge variant={row.original.holder === "Institution" ? "warning" : "info"}>{row.original.holder}</Badge> },
-    { accessorKey: "institutionDays", header: "Institution days", cell: ({ getValue }) => <span className="mono">{getValue()}d</span> },
-    { accessorKey: "officerDays", header: "Officer days", cell: ({ getValue }) => <span className="mono">{getValue()}d</span> },
-    { accessorKey: "status", header: "Status", cell: ({ getValue }) => <Badge variant={getValue() === "Overdue" ? "danger" : "info"}>{getValue()}</Badge> },
-  ], []);
-  return <DataTable data={compact ? data.slice(0, 10) : data} columns={columns} />;
-}
+const caseStageLabels = {
+  submitted: "Submitted",
+  self_disclosure: "Self-disclosure",
+  scrutiny: "Scrutiny",
+  re_scrutiny: "Re-Scrutiny",
+  regional_committee: "Regional Committee",
+  evc: "EVC",
+  shc: "SHC",
+  sac: "SAC",
+  decision: "Decision",
+};
 
-function CaseList({ data }) {
+const caseStatusLabels = {
+  draft: "Draft",
+  submitted: "Submitted",
+  in_progress: "In progress",
+  returned: "Action required",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+function CaseList() {
   const role = useAppStore((state) => state.role);
-  const cases = role === "Institution user" ? data.cases.filter((item) => item.institution === "Demo Institute") : data.cases;
-  const [selected, setSelected] = useState(cases[0]);
-  if (!selected) return <Card title="No cases yet"><p className="muted">No cases are available in this workspace.</p><Link className="button button-primary" to="/applications/new">Start an application</Link></Card>;
-  return <div className="case-layout"><div><Card title="Case register" description={`${cases.length} fictional cases across routes and stages.`}><div className="filter-bar"><select aria-label="Filter region"><option>All regions</option>{["North", "South", "East", "West", "Central"].map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Filter stage"><option>All stages</option>{stages.map((item) => <option key={item}>{item}</option>)}</select><button className="button button-secondary button-small"><Filter size={14} /> Filters</button></div><CaseTable data={cases} /></Card></div><aside className="case-detail-rail"><Card title="Case status" description={selected.id}><Badge variant="info">{selected.status}</Badge><p><strong>{selected.institution}</strong><br /><span className="muted">{selected.type}</span></p><StageStepper route={data.policy.routes[selected.route] || data.policy.routes.Other} current={selected.stage} holder={selected.holder} /><OwnershipClockBar institutionDays={selected.institutionDays} officerDays={selected.officerDays} /><div className="next-step"><strong>Next step for you</strong><p>{selected.holder === "Institution" ? "Submit the requested response or evidence." : "This case is waiting with the assigned reviewer."}</p></div><Link to={`/case/${selected.id}`} className="button button-secondary">Open case detail</Link></Card></aside><div className="case-mobile-actions">{cases.slice(0, 4).map((item) => <button key={item.id} className={`case-select ${selected.id === item.id ? "selected" : ""}`} onClick={() => setSelected(item)}>{item.id}</button>)}</div></div>;
+  const [cases, setCases] = useState(null);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    async function loadCases() {
+      try {
+        const records = [];
+        for (let page = 1; ; page += 1) {
+          const batch = await caseWorkflowApi.listCases({ page, pageSize: 100 });
+          if (!Array.isArray(batch)) throw new Error("The case register returned an invalid response.");
+          records.push(...batch);
+          if (batch.length < 100) break;
+        }
+        if (active) setCases(records.map((record) => ({
+          id: record.caseNo,
+          caseId: record._id,
+          type: applicationTypeLabels[record.applicationType] || record.applicationType,
+          stage: caseStageLabels[record.currentStage] || record.currentStage,
+          status: caseStatusLabels[record.status] || record.status,
+          updatedAt: record.updatedAt,
+        })));
+      } catch (loadError) {
+        if (active) setError(loadError.message || "Could not load applications.");
+      }
+    }
+    loadCases();
+    return () => { active = false; };
+  }, [reloadKey]);
+
+  const columns = useMemo(() => [
+    { accessorKey: "id", header: "Case ID", cell: ({ row }) => <Link className="mono text-link" to={`/case/${row.original.caseId}`}>{row.original.id}</Link> },
+    { accessorKey: "type", header: "Application type" },
+    { accessorKey: "stage", header: "Current stage" },
+    { accessorKey: "status", header: "Status", cell: ({ row }) => <Badge variant={row.original.status === "Rejected" ? "danger" : row.original.status === "Approved" ? "success" : row.original.status === "Action required" ? "warning" : "info"}>{row.original.status}</Badge> },
+    { accessorKey: "updatedAt", header: "Last updated", cell: ({ getValue }) => getValue() ? new Date(getValue()).toLocaleDateString() : "—" },
+  ], []);
+
+  if (cases === null) {
+    return error
+      ? <Card title="Applications unavailable"><p className="muted">{error}</p><button className="button button-secondary" onClick={() => { setError(""); setCases(null); setReloadKey((key) => key + 1); }}>Retry</button></Card>
+      : <Card title="Your applications"><div className="loading-state" aria-label="Loading applications"><i /><i /><i /></div></Card>;
+  }
+
+  return <Card
+    title={role === "Institution user" ? "Your applications" : "Cases"}
+    description={role === "Institution user" ? "Applications created by your institution." : "Applications available in your authorized case scope."}
+  >
+    {cases.length
+      ? <DataTable data={cases} columns={columns} emptyText="No applications match your search." />
+      : <div className="state-card"><FileText size={22} /><h3>No applications yet</h3><p>Your institution’s applications will appear here after you save an application draft.</p><Link className="button button-primary" to="/applications/new">Start an application</Link></div>}
+  </Card>;
 }
 
 function Documents({ data, aiEnabled, setMessage, onLeaseConfirm }) {
@@ -593,34 +712,153 @@ function Queue({ data }) {
   return <><div className="stat-grid"><StatCard label="Overdue" value="3" note="Includes unresolved escalation" icon={AlertTriangle} /><StatCard label="Due in 24 hours" value="5" note="Officer-held tasks" icon={Clock3} /><StatCard label="Ready" value="12" note="Outside urgent windows" icon={CheckCircle2} /><StatCard label="Upcoming" value="8" note="Reminder window" icon={Bell} /></div><div className="filter-bar"><div className="tabs-list inline-tabs"><button className="tab-trigger active">My queue</button><button className="tab-trigger">Supervisor queue · 4 unassigned</button></div><select aria-label="Filter region"><option>All regions</option><option>South</option><option>North</option></select><select aria-label="Filter stage"><option>All stages</option>{stages.map((stage) => <option key={stage}>{stage}</option>)}</select></div>{groups.map(([heading, predicate]) => <Card className="queue-group" key={heading} title={heading}><div className="queue-list">{officerWork.filter(predicate).slice(0, 5).map((item) => <div className="queue-row" key={item.id}><span className="queue-priority"><AlertTriangle size={16} /></span><div className="queue-main"><Link to={`/case/${item.id}`} className="text-link mono">{item.id}</Link><strong>{item.institution}</strong><small>{item.stage} · {item.institutionDays + item.officerDays} days in stage · {item.holder}</small></div><Badge variant={item.status === "Overdue" ? "danger" : "info"}>{item.status}</Badge><Link className="button button-secondary button-small" to={`/case/${item.id}`}>Review</Link></div>)}</div></Card>)}<details className="institution-rollup"><summary>Institution-held roll-up · 7 items</summary><p>Items requiring institution action are not included in your officer queue.</p></details></>;
 }
 
-function CaseControl({ data, setMessage }) {
-  const { caseId = "AT-2026-0040" } = useParams();
-  const item = data.cases.find((record) => record.id === caseId) || data.cases[0];
-  const route = data.policy.routes[item.route] || data.policy.routes.Other;
-  const [currentStage, setCurrentStage] = useState(item.stage);
-  const [currentHolder, setCurrentHolder] = useState(item.holder);
-  useEffect(() => setCurrentStage(item.stage), [item.id, item.stage]);
-  useEffect(() => setCurrentHolder(item.holder), [item.id, item.holder]);
-  const previousStages = route.slice(0, route.indexOf(currentStage));
-  const [returnTarget, setReturnTarget] = useState(previousStages[previousStages.length - 1] || "");
-  useEffect(() => setReturnTarget(previousStages[previousStages.length - 1] || ""), [currentStage]);
-  const [reasonOpen, setReasonOpen] = useState(false);
-  const logAudit = useAppStore((state) => state.logAudit);
+function CaseControl() {
+  const { caseId } = useParams();
   const role = useAppStore((state) => state.role);
-  const isOfficer = role === "Scrutiny / Regional officer";
-  const forbidden = role === "Institution user" && item.institution !== "Demo Institute";
+  const [record, setRecord] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [fieldValues, setFieldValues] = useState({});
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [savingDocument, setSavingDocument] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const canEdit = role === "Institution user";
+
   useEffect(() => {
-    if (forbidden) logAudit({ actor: "Jordan Lee", role, action: "Attempted cross-institution case access", caseId: item.id, reason: "Access denied: institution scope mismatch", denied: true });
-  }, [forbidden, item.id, logAudit, role]);
-  if (forbidden) return <section className="access-denied"><ShieldCheck size={28} /><p className="eyebrow">INSTITUTION SCOPE</p><h2>Access denied</h2><p>This case belongs to another institution. The denied attempt has been recorded.</p><Link className="button button-primary" to="/cases">Return to my cases</Link></section>;
-  function returnCase(reason) {
-    logAudit({ actor: "Ravi Menon", role, action: `Returned case to ${returnTarget}`, caseId: item.id, reason, denied: false });
-    setCurrentStage(returnTarget);
-    setCurrentHolder("Institution");
-    setReasonOpen(false);
-    setMessage("Case returned with reason. The action is recorded in the audit trail.");
+    let active = true;
+    async function loadCase() {
+      try {
+        setError("");
+        const [caseResult, documentResults] = await Promise.all([
+          caseWorkflowApi.getCase(caseId),
+          caseWorkflowApi.getCaseDocuments(caseId),
+        ]);
+        if (!Array.isArray(documentResults)) throw new Error("Case documents could not be loaded.");
+        if (!active) return;
+        setRecord(caseResult);
+        setDocuments(documentResults);
+        setFieldValues((current) => {
+          const next = { ...current };
+          for (const document of documentResults) {
+            for (const field of document.extraction?.fields || []) {
+              const key = `${document._id}:${field.field_name}`;
+              if (!Object.hasOwn(next, key)) next[key] = field.confirmed_value ?? field.ai_value ?? "";
+            }
+          }
+          return next;
+        });
+      } catch (loadError) {
+        if (active) setError(loadError.message || "The case could not be loaded.");
+      }
+    }
+    loadCase();
+    return () => { active = false; };
+  }, [caseId, reloadKey]);
+
+  if (!record) {
+    return error
+      ? <Card title="Case unavailable"><p className="muted">{error}</p><Link className="button button-secondary" to="/cases">Return to cases</Link></Card>
+      : <Card title="Loading case"><div className="loading-state" aria-label="Loading case"><i /><i /></div></Card>;
   }
-  return <><div className="case-meta"><span className="mono">{item.id}</span><Badge variant="info">Policy v2026.2</Badge><Badge variant="neutral"><MapPin size={13} />{item.region} Region</Badge><Badge variant={currentHolder === "Institution" ? "warning" : "info"}>Current holder: {currentHolder}</Badge></div><div className="case-detail-grid"><div><Card title="Application route" description={item.route}><StageStepper route={route} current={currentStage} holder={currentHolder} returnedReason={item.status === "Action required" ? "Provide corrected faculty documents." : undefined} /><OwnershipClockBar institutionDays={item.institutionDays} officerDays={item.officerDays} /><div className="per-stage-table"><div><strong>Stage</strong><strong>Holder</strong><strong>Days</strong></div><div><span>{currentStage}</span><span>{currentHolder}</span><span className="mono">{item.institutionDays + item.officerDays}</span></div></div></Card><Card title="Scrutiny checklist" description="Record review findings against submitted items.">{["Institution details match registry", "Faculty evidence received", "Required documents verified", "Self-disclosure reviewed"].map((label, index) => <label className="check-row" key={label}><input type="checkbox" defaultChecked={index < 2} /><span>{label}</span><input aria-label={`Remarks for ${label}`} placeholder="Add review remarks" /></label>)}</Card><Card title="Documents"><div className="document-list">{data.documents.slice(0, 3).map((document) => <div className="document-row" key={document.id}><FileText size={18} /><div className="document-name"><strong>{document.type}</strong><small>{document.name}</small></div><Badge variant={document.verification === "Verified" ? "success" : "warning"}>{document.verification}</Badge></div>)}</div></Card><Card title="EVC task"><div className="note info-note"><InfoIcon />EVC task created once when policy says. This case is currently {currentStage === "EVC" ? "queued for the committee." : "not yet at the EVC stage."}</div></Card></div><aside><Card title="Actions"><p>Complete the current stage to advance to the next stage in the signed-off route.</p>{isOfficer && <><button className="button button-primary full-button" disabled={route.indexOf(currentStage) >= route.length - 1} onClick={() => { const next = route[route.indexOf(currentStage) + 1]; setCurrentStage(next); setCurrentHolder("Officer"); setMessage(`Stage completed. Case advanced to ${next}.`); }}>Complete stage and advance <ArrowRight size={15} /></button>{previousStages.length > 0 && <><label className="field-label">Return to stage<select value={returnTarget} onChange={(event) => setReturnTarget(event.target.value)}>{previousStages.map((stage) => <option key={stage}>{stage}</option>)}</select></label><button className="button button-secondary full-button" onClick={() => setReasonOpen(true)}>Return with reason</button></>}{route.includes("Regional Committee") && <button className="button button-secondary full-button" onClick={() => setMessage("Regional Committee referral recorded.")}>Refer to Regional Committee</button>}</>}<p className="muted">Final decision controls are only available to the competent authority.</p></Card><Card title="Audit entries"><Timeline items={data.audit.filter((entry) => entry.caseId === item.id).slice(0, 4)} /></Card></aside></div><ReasonDialog open={reasonOpen} onOpenChange={setReasonOpen} onConfirm={returnCase} /></>;
+
+  const editable = canEdit && ["draft", "returned"].includes(record.status);
+  const route = record.route.map((stage) => caseStageLabels[stage] || stage);
+  const currentStage = record.status === "draft" ? "Draft" : caseStageLabels[record.currentStage] || record.currentStage;
+  const currentHolder = record.holderType === "institution" ? "Institution" : record.holderType === "committee" ? "Committee" : "Officer";
+  const labelBySlot = new Map((record.checklist || []).map((slot) => [slot.slotId, slot.label]));
+  const missingRequired = (record.checklist || []).filter((slot) => slot.required && !["confirmed", "verified"].includes(slot.status));
+
+  async function submitDraft() {
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await caseWorkflowApi.submitCase(record._id, record.version);
+      setRecord({ ...result.case, checklist: result.checklist || [] });
+      setNotice(result.warning || `Application ${result.case.caseNo} was submitted.`);
+    } catch (submitError) {
+      setError(submitError.message || "The application could not be submitted.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function saveFields(document) {
+    setSavingDocument(document._id);
+    setError("");
+    try {
+      const fields = (document.extraction?.fields || []).map((field) => ({
+        field_name: field.field_name,
+        confirmed_value: fieldValues[`${document._id}:${field.field_name}`] ?? field.confirmed_value ?? field.ai_value ?? "",
+      }));
+      await caseWorkflowApi.confirmFields(document._id, fields, document.status === "AI_FAILED");
+      setReloadKey((key) => key + 1);
+    } catch (saveError) {
+      setError(saveError.message || "Document fields could not be saved.");
+    } finally {
+      setSavingDocument("");
+    }
+  }
+
+  return <>
+    {error && <div className="alert alert-warning" role="alert"><AlertTriangle size={17} />{error}</div>}
+    {notice && <div className="alert alert-success" role="status"><CheckCircle2 size={17} />{notice}</div>}
+    <div className="case-meta">
+      <span className="mono">{record.caseNo}</span>
+      <Badge variant={record.status === "approved" ? "success" : record.status === "rejected" ? "danger" : "info"}>{caseStatusLabels[record.status] || record.status}</Badge>
+      <Badge variant="neutral">{record.policyVersion}</Badge>
+      <Badge variant={currentHolder === "Institution" ? "warning" : "info"}>Current holder: {currentHolder}</Badge>
+    </div>
+    <Card title="Application details" description={`${applicationTypeLabels[record.applicationType] || record.applicationType} · ${editable ? "Draft — you can edit document fields." : "Submitted — document fields are read-only."}`}
+      action={canEdit && record.status === "draft" && <button className="button button-primary" disabled={submitting || missingRequired.length > 0} onClick={submitDraft}>
+        {submitting ? "Submitting…" : missingRequired.length ? "Confirm required documents first" : "Submit application"}
+      </button>}>
+      <div className="per-stage-table">
+        <div><strong>Current stage</strong><strong>Status</strong><strong>Version</strong></div>
+        <div><span>{currentStage}</span><span>{caseStatusLabels[record.status] || record.status}</span><span className="mono">{record.version}</span></div>
+      </div>
+      {record.status === "draft"
+        ? <div className="note info-note">This draft is visible only to your institution. Workflow stages become visible after submission.</div>
+        : <StageStepper route={route} current={currentStage} holder={currentHolder} />}
+    </Card>
+    <Card title="Uploaded documents" description="Documents and their extracted fields are loaded from this case.">
+      {documents.length
+        ? <div className="case-document-list">{documents.map((document) => {
+          const fields = document.extraction?.fields || [];
+          const saved = document.status === "CONFIRMED";
+          return <article className="case-document-slot" key={document._id}>
+            <div className="case-document-slot-heading">
+              <div><h3>{labelBySlot.get(document.doc_type_slot) || document.doc_type_slot.replaceAll("_", " ")}</h3><p>{document.original_name}</p></div>
+              <Badge variant={saved ? "success" : document.status === "AI_FAILED" ? "danger" : "warning"}>{document.status.replaceAll("_", " ")}</Badge>
+            </div>
+            {fields.length
+              ? <div className="case-extraction-fields">
+                {!editable && <p className="case-extraction-intro">This case has been submitted. Extracted and confirmed values are view-only.</p>}
+                {fields.map((field) => <label className="case-extraction-field" key={field.field_name}>
+                  <strong>{field.field_name.replaceAll("_", " ")}</strong>
+                  <input
+                    aria-label={`${field.field_name.replaceAll("_", " ")} for ${document.original_name}`}
+                    value={fieldValues[`${document._id}:${field.field_name}`] ?? field.confirmed_value ?? field.ai_value ?? ""}
+                    readOnly={!editable || saved}
+                    onChange={(event) => setFieldValues((current) => ({ ...current, [`${document._id}:${field.field_name}`]: event.target.value }))}
+                  />
+                </label>)}
+                {editable && <button className="button button-secondary button-small case-save-fields" disabled={saved || savingDocument === document._id} onClick={() => saveFields(document)}>
+                  {saved ? "Fields saved" : savingDocument === document._id ? "Saving…" : "Save all document fields"}
+                </button>}
+              </div>
+              : <p className="muted">{["UPLOADED", "PROCESSING"].includes(document.status) ? "Text detection is still in progress." : "No extracted fields are available for this document."}</p>}
+            {document.extraction?.extracted_lines?.length > 0 && <details className="case-ocr-text">
+              <summary>View detected text ({document.extraction.extracted_lines.length} lines)</summary>
+              <ol>{document.extraction.extracted_lines.map((line, index) => <li key={`${document._id}-${index}`}>{line}</li>)}</ol>
+            </details>}
+          </article>;
+        })}</div>
+        : <div className="state-card"><FileText size={22} /><h3>No documents uploaded</h3><p>Documents uploaded for this application will appear here.</p>{editable && <Link className="button button-primary" to="/applications/new">Continue draft</Link>}</div>}
+    </Card>
+    {!editable && <div className="note info-note">Submitted application documents and extracted fields cannot be changed here.</div>}
+  </>;
 }
 
 function Timeline({ items }) {
@@ -629,15 +867,14 @@ function Timeline({ items }) {
 
 function AuditPage({ data }) {
   const [deniedOnly, setDeniedOnly] = useState(false);
-  const currentSessionAudit = useAppStore((state) => state.audit);
-  const items = [...currentSessionAudit, ...data.audit].filter((entry) => !deniedOnly || entry.denied);
+  const items = data.audit.filter((entry) => !deniedOnly || entry.denied);
   const columns = useMemo(() => [
     { accessorKey: "time", header: "Time", cell: ({ getValue }) => <span className="mono">{getValue().replace("T", " ").slice(0, 16)}</span> },
     { accessorKey: "actor", header: "Actor" }, { accessorKey: "role", header: "Role" },
     { accessorKey: "action", header: "Action", cell: ({ row }) => <span className={row.original.denied ? "danger-copy" : ""}>{row.original.action}</span> },
     { accessorKey: "caseId", header: "Case" }, { accessorKey: "reason", header: "Reason" },
   ], []);
-  return <Card title="Audit events" description={`${data.audit.length} demo events · two denied attempts are included.`}><div className="filter-bar"><label className="check-inline"><input type="checkbox" checked={deniedOnly} onChange={(event) => setDeniedOnly(event.target.checked)} />Denied attempts only</label><select aria-label="Filter action"><option>All actions</option><option>Stage changes</option><option>Verification</option><option>Access attempts</option></select><button className="button button-secondary button-small"><Download size={14} /> Export trail</button></div><DataTable data={items} columns={columns} /></Card>;
+  return <Card title="Audit events" description={`${data.audit.length} events returned by the audit service.`}><div className="filter-bar"><label className="check-inline"><input type="checkbox" checked={deniedOnly} onChange={(event) => setDeniedOnly(event.target.checked)} />Denied attempts only</label></div><DataTable data={items} columns={columns} /></Card>;
 }
 
 function Verification({ data, setMessage }) {
@@ -900,23 +1137,23 @@ function Hearings({ data, setMessage }) {
 
 function ScaleIcon() { return <ShieldCheck size={17} />; }
 
-function ReportsAndFallback({ kind, data, setMessage, aiEnabled, setAiEnabled, usersOnly }) {
-  if (kind === "cases") return <CaseList data={data} />;
-  if (kind === "undertakings") return <Undertakings data={data} setMessage={setMessage} />;
-  if (kind === "deficiencies") return <Deficiencies data={data} setMessage={setMessage} />;
-  if (kind === "notifications") return <Notifications data={data} setMessage={setMessage} />;
+function ReportsAndFallback({ kind, data, setMessage, usersOnly }) {
+  if (kind === "cases") return <CaseList />;
+  if (kind === "undertakings") return <UndertakingsLive data={data} />;
+  if (kind === "deficiencies") return <DeficienciesLive data={data} />;
+  if (kind === "notifications") return <NotificationsLive data={data} setMessage={setMessage} />;
   if (kind === "audit") return <AuditPage data={data} />;
-  if (kind === "queue") return <Queue data={data} />;
-  if (kind === "caseControl") return <CaseControl data={data} setMessage={setMessage} />;
-  if (kind === "verification") return <Verification data={data} setMessage={setMessage} />;
-  if (kind === "evc") return <Evc data={data} setMessage={setMessage} />;
-  if (kind === "hearings") return <Hearings data={data} setMessage={setMessage} />;
-  if (kind === "decisions") return <Decisions data={data} setMessage={setMessage} />;
-  if (kind === "region") return <Region data={data} />;
-  if (kind === "reports") return <Reports data={data} />;
-  if (kind === "policy") return <Policy data={data} setMessage={setMessage} />;
+  if (kind === "queue") return <QueueLive data={data} />;
+  if (kind === "caseControl") return <CaseControl />;
+  if (kind === "verification") return <DocumentsLive title="Evidence in your authorized case scope" allowNewApplication={false} />;
+  if (kind === "evc") return <EvcVisitsLive data={data} />;
+  if (kind === "hearings") return <HearingsLive data={data} />;
+  if (kind === "decisions") return <DecisionsLive data={data} setMessage={setMessage} />;
+  if (kind === "region") return <RegionLive data={data} />;
+  if (kind === "reports") return <ReportsLive data={data} />;
+  if (kind === "policy") return <PolicyLive data={data} />;
   if (kind === "alertRules") return <AlertRules usersOnly={usersOnly} setMessage={setMessage} />;
-  if (kind === "aiService") return <AIService aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} setMessage={setMessage} />;
+  if (kind === "aiService") return <AIServiceLive />;
   return null;
 }
 
@@ -930,30 +1167,33 @@ export default function DomainWorkspace({ kind, usersOnly = false }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const aiEnabled = useAppStore((state) => state.aiEnabled);
-  const setAiEnabled = useAppStore((state) => state.setAiEnabled);
-  const confirmLease = useAppStore((state) => state.confirmLease);
-  const setNotifications = useAppStore((state) => state.setNotifications);
+  const backendRole = useAppStore((state) => state.user?.role);
   async function load() {
     setError("");
     try {
-      const result = await api.getDashboard();
+      const result = await api.getDashboard(backendRole);
       setData(result);
-      setNotifications(result.notifications);
     } catch (loadError) { setError(loadError.message || "Unexpected service error."); }
   }
-  useEffect(() => { if (kind !== "alertRules") load(); }, [kind]);
+  useEffect(() => {
+    if (["application", "cases", "caseControl", "documents", "documentReview"].includes(kind)) {
+      setData({});
+      setError("");
+    } else if (kind !== "alertRules") {
+      load();
+    }
+  }, [kind, backendRole]);
 
   const action = kind === "dashboard" ? <Link className="button button-primary" to="/applications/new"><Plus size={16} /> New application</Link> : null;
-  if (kind === "alertRules") return <><PageHeading config={config} /><ReportsAndFallback kind={kind} data={data} setMessage={setMessage} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} usersOnly={usersOnly} /><Toast message={message} onClose={() => setMessage("")} /></>;
+  if (kind === "alertRules") return <><PageHeading config={config} /><ReportsAndFallback kind={kind} data={data} setMessage={setMessage} usersOnly={usersOnly} /><Toast message={message} onClose={() => setMessage("")} /></>;
   if (!data) return <><PageHeading config={config} action={action} /><BusyState error={error} onRetry={load} /></>;
 
   return <><PageHeading config={config} action={action} />
     {kind === "dashboard" ? <Dashboard data={data} reload={load} /> :
       kind === "application" ? <NewApplication data={data} setMessage={setMessage} /> :
-      kind === "documents" || kind === "documentReview" ? <Documents data={data} aiEnabled={aiEnabled} setMessage={setMessage} onLeaseConfirm={confirmLease} /> :
+      kind === "documents" || kind === "documentReview" ? <DocumentsLive /> :
       kind === "design" ? <DesignSystem /> :
-      <ReportsAndFallback kind={kind} data={data} setMessage={setMessage} aiEnabled={aiEnabled} setAiEnabled={setAiEnabled} usersOnly={usersOnly} />}
+      <ReportsAndFallback kind={kind} data={data} setMessage={setMessage} usersOnly={usersOnly} />}
     <Toast message={message} onClose={() => setMessage("")} />
   </>;
 }
