@@ -1,0 +1,27 @@
+{
+  "current":"v2026.2",
+  "versions":[
+    {"version":"v2026.1","status":"Retired","signedOff":"2026-01-15"},
+    {"version":"v2026.2","status":"Signed off","signedOff":"2026-08-01"},
+    {"version":"v2026.3","status":"Draft","signedOff":null}
+  ],
+  "routes":{
+    "Only Scrutiny":["Submitted","Self-disclosure","Scrutiny","Re-Scrutiny","Decision"],
+    "Scrutiny + EVC":["Submitted","Self-disclosure","Scrutiny","Re-Scrutiny","EVC","Decision"],
+    "EVC + SAC/SHC":["Submitted","Self-disclosure","EVC","SHC","SAC","Decision"],
+    "Only EVC":["Submitted","Self-disclosure","EVC","Decision"],
+    "Other":["Submitted","Self-disclosure","Scrutiny","Regional Committee","EVC","SHC","SAC","Decision"]
+  },
+  "applicationRoutes":{
+    "New institution":"EVC + SAC/SHC",
+    "New course":"Scrutiny + EVC",
+    "Increase in intake":"Scrutiny + EVC",
+    "Extension of approval":"Only Scrutiny",
+    "Conversion of diploma to degree":"EVC + SAC/SHC",
+    "Collaboration or twinning programme":"Other",
+    "Restoration of intake":"Only Scrutiny"
+  },
+  "timelines":{"Scrutiny":15,"Re-Scrutiny":10,"EVC":30,"Decision":15},
+  "evcTaskCreatedOnce":true,
+  "priorityNewInstitution":true
+}

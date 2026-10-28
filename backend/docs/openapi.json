@@ -1,0 +1,99 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ApprovalTrack API",
+    "version": "1.0.0",
+    "description": "Role-scoped approval workflow, document inference, and compliance demo API. AI output is unverified and requires human confirmation."
+  },
+  "servers": [
+    { "url": "http://localhost:4000/api/v1" }
+  ],
+  "security": [{ "sessionCookie": [] }],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "security": [],
+        "summary": "Create a 15-day absolute session",
+        "requestBody": { "$ref": "#/components/requestBodies/Login" },
+        "responses": { "200": { "$ref": "#/components/responses/Envelope" }, "401": { "$ref": "#/components/responses/Error" } }
+      }
+    },
+    "/auth/logout": { "post": { "summary": "Revoke the current session", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/auth/me": { "get": { "summary": "Get the current user", "responses": { "200": { "$ref": "#/components/responses/Envelope" }, "401": { "$ref": "#/components/responses/Error" } } } },
+    "/auth/forgot-password": { "post": { "security": [], "summary": "Request a password reset email", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/auth/reset-password": { "post": { "security": [], "summary": "Reset a password with a one-time token", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/auth/change-password": { "post": { "summary": "Change password and revoke other sessions", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/auth/register-institution": { "post": { "security": [], "summary": "Register an institution pending email verification", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/auth/verify-email": { "post": { "security": [], "summary": "Verify institution email", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/users": {
+      "get": { "summary": "List users (Admin)", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } },
+      "post": { "summary": "Create a role account (Admin)", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } }
+    },
+    "/users/{id}/status": { "patch": { "summary": "Change account status (Admin)", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/institutions": { "get": { "summary": "List accessible institutions", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create an institution (Admin)", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/institutions/{id}": { "get": { "summary": "Get an institution and counts", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "patch": { "summary": "Update institution contact details", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/applications": { "get": { "summary": "List applications in the user's scope", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create a draft application", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/applications/{id}": { "get": { "summary": "Get an application", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "patch": { "summary": "Update assignment/compliance (Admin)", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/applications/{id}/submit": { "post": { "summary": "Submit a draft application", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" }, "409": { "$ref": "#/components/responses/Error" } } } },
+    "/applications/{id}/stage/advance": { "post": { "summary": "Advance from the responsible stage", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" }, "409": { "$ref": "#/components/responses/Error" } } } },
+    "/applications/{id}/stage/return": { "post": { "summary": "Return an application with a reason", "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/applications/{id}/resubmit": { "post": { "summary": "Resubmit after correction", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/applications/{id}/timeline": { "get": { "summary": "Read append-only stage history", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/applications/{id}/documents": { "post": { "summary": "Upload PDF/JPEG/PNG (20 MB maximum)", "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "required": ["file", "doc_type_slot"], "properties": { "file": { "type": "string", "format": "binary" }, "doc_type_slot": { "type": "string" } } } } } }, "responses": { "202": { "$ref": "#/components/responses/Envelope" }, "415": { "$ref": "#/components/responses/Error" } } } },
+    "/documents/{id}/extraction": { "get": { "summary": "Get AI suggestions and extraction state", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/documents/{id}/confirm": { "post": { "summary": "Confirm or correct AI suggestions", "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/documents/{id}/reprocess": { "post": { "summary": "Queue document reprocessing", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "202": { "$ref": "#/components/responses/Envelope" } } } },
+    "/documents/{id}/download": { "get": { "summary": "Download an authorized document", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "description": "Document stream" } } } },
+    "/students": { "get": { "summary": "List students in the user's institution scope", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create a student", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/students/{id}": { "get": { "summary": "Get a student", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "patch": { "summary": "Update a student or own profile", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "delete": { "summary": "Soft-delete a student", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/faculty": { "get": { "summary": "List faculty in the user's institution scope", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create a faculty record", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/faculty/{id}": { "get": { "summary": "Get a faculty record", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "patch": { "summary": "Update faculty or own profile", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "delete": { "summary": "Soft-delete a faculty record", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/alerts": { "get": { "summary": "List the current user's alerts", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/alerts/{id}": { "patch": { "summary": "Acknowledge or resolve an alert", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/alerts/{id}/cancellation-decision": { "post": { "summary": "Record a Bureau Officer cancellation review decision", "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "200": { "$ref": "#/components/responses/Envelope" }, "409": { "$ref": "#/components/responses/Error" } } } },
+    "/leases": { "get": { "summary": "List leases with expiry filter", "parameters": [{ "name": "expiry", "in": "query", "schema": { "type": "string", "enum": ["60", "30", "10", "1", "expired"] } }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/pending-items": { "get": { "summary": "List pending institution submissions", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Raise a pending item", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/undertakings": { "get": { "summary": "List undertakings", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create an undertaking", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/yearly-reports": { "get": { "summary": "List yearly reports", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create a yearly report", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/visits": { "get": { "summary": "List EVC visits", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Schedule an EVC visit", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/visits/{id}": { "patch": { "summary": "Update visit status or report", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/visits/{id}/report": { "post": { "summary": "Upload EVC visit report (EVC only)", "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "required": ["file"], "properties": { "file": { "type": "string", "format": "binary" } } } } } }, "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/decisions": { "get": { "summary": "List Bureau decisions", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Record a Bureau Officer decision", "responses": { "201": { "$ref": "#/components/responses/Envelope" } } } },
+    "/dashboard/overview": { "get": { "summary": "Role-scoped dashboard counts", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/dashboard/workload": { "get": { "summary": "Stage and officer workload", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/dashboard/compliance": { "get": { "summary": "Compliance overview", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/dashboard/analytics": { "get": { "summary": "Application and institution analytics", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/users": { "get": { "summary": "List users (Admin)", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "post": { "summary": "Create a user with a stored role (Admin)", "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "201": { "$ref": "#/components/responses/Envelope" }, "409": { "$ref": "#/components/responses/Error" } } } },
+    "/admin/users/{id}/status": { "patch": { "summary": "Change user account status (Admin)", "parameters": [{ "$ref": "#/components/parameters/Id" }], "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/institutions": { "get": { "summary": "List institutions for account assignment (Admin)", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/rules": { "get": { "summary": "List configurable rules (Admin)", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/rules/{ruleId}": { "patch": { "summary": "Update a rule (Admin)", "parameters": [{ "name": "ruleId", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/stage-config": { "get": { "summary": "List configured workflow stages (Admin)", "responses": { "200": { "$ref": "#/components/responses/Envelope" } } }, "put": { "summary": "Upsert a workflow stage (Admin)", "requestBody": { "$ref": "#/components/requestBodies/Json" }, "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/audit-logs": { "get": { "summary": "Read append-only audit logs (Admin)", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/jobs/{name}/run": { "post": { "summary": "Run a scheduled job (Admin)", "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/notifications": { "get": { "summary": "Read notification delivery logs (Admin)", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } },
+    "/admin/notifications/{id}/retry": { "post": { "summary": "Retry a failed notification (Admin)", "parameters": [{ "$ref": "#/components/parameters/Id" }], "responses": { "200": { "$ref": "#/components/responses/Envelope" } } } }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "approvaltrack_session" }
+    },
+    "parameters": {
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+      "PageSize": { "name": "pageSize", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } }
+    },
+    "requestBodies": {
+      "Login": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email" }, "password": { "type": "string" } } } } } },
+      "Json": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } } }
+    },
+    "responses": {
+      "Envelope": { "description": "Successful API response", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "Error": { "description": "API error response", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } }
+    },
+    "schemas": {
+      "Envelope": { "type": "object", "required": ["data", "error", "meta"], "properties": { "data": {}, "error": { "type": ["object", "null"] }, "meta": { "type": "object", "properties": { "requestId": { "type": "string" } } } } },
+      "ErrorEnvelope": { "type": "object", "required": ["data", "error", "meta"], "properties": { "data": { "type": "null" }, "error": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "details": {} } }, "meta": { "type": "object" } } }
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "seed": 2026,
+  "as_of_for_status": "2026-10-27",
+  "documents": {
+    "train": 5000,
+    "val": 1500,
+    "test": 1500
+  },
+  "dropped_by_reason": {
+    "registered_text_not_found": 132,
+    "older_lease_overlap": 362,
+    "unlabelled_candidate": 86,
+    "page_count_out_of_range": 255
+  },
+  "candidate_roles": {
+    "test/lease_end": 1895,
+    "test/lease_start": 2499,
+    "test/other": 18472,
+    "test/term_value": 1894,
+    "train/lease_end": 5244,
+    "train/lease_start": 6997,
+    "train/other": 68039,
+    "train/term_value": 5224,
+    "val/lease_end": 1839,
+    "val/lease_start": 2495,
+    "val/other": 15532,
+    "val/term_value": 1880
+  },
+  "scenarios": {
+    "test/A": 372,
+    "test/B": 359,
+    "test/C": 539,
+    "test/D": 230,
+    "train/A": 1257,
+    "train/B": 1256,
+    "train/C": 1705,
+    "train/D": 782,
+    "val/A": 378,
+    "val/B": 391,
+    "val/C": 503,
+    "val/D": 228
+  },
+  "expected_status": {
+    "train": {
+      "expired": 1012,
+      "needs_review": 997,
+      "live": 1349,
+      "not_started": 611,
+      "inconsistent": 616,
+      "expires_soon": 415
+    },
+    "val": {
+      "expires_soon": 101,
+      "inconsistent": 176,
+      "live": 394,
+      "needs_review": 342,
+      "expired": 302,
+      "not_started": 185
+    },
+    "test": {
+      "expired": 294,
+      "not_started": 176,
+      "needs_review": 332,
+      "inconsistent": 178,
+      "expires_soon": 142,
+      "live": 378
+    }
+  },
+  "ambiguous_docs": {
+    "test/end_ambiguous": 209,
+    "test/start_ambiguous": 311,
+    "train/end_ambiguous": 626,
+    "train/start_ambiguous": 941,
+    "val/end_ambiguous": 214,
+    "val/start_ambiguous": 325
+  },
+  "pages_histogram": {
+    "3": 1216,
+    "4": 1239,
+    "5": 1155,
+    "6": 852,
+    "7": 648,
+    "8": 664,
+    "9": 646,
+    "10": 639,
+    "11": 557,
+    "12": 384
+  },
+  "layouts": {
+    "0": "train",
+    "1": "val",
+    "2": "train",
+    "3": "test",
+    "4": "train",
+    "5": "test",
+    "6": "train",
+    "7": "train",
+    "8": "test",
+    "9": "train",
+    "10": "val",
+    "11": "train",
+    "12": "train",
+    "13": "val",
+    "14": "train",
+    "15": "train"
+  }
+}

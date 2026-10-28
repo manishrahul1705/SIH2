@@ -1,0 +1,51 @@
+# Node.js dependencies and build output
+node_modules/
+**/node_modules/
+dist/
+build/
+coverage/
+.vite/
+.vitest/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Uploaded documents and local runtime data
+uploads/
+**/uploads/
+.mongo-test/
+all-institutions.json
+
+# Python environments, bytecode, and test caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated training datasets (recreate with the checked-in generators)
+mlmodels/Model1/m1_dataset/m1_*.csv
+mlmodels/Model2/dataset/*.csv
+mlmodels/Model2/dataset/*.jsonl
+mlmodels/Model2/dataset/*.jsonl.gz
+mlmodels/Model3/dataset/*.csv
+mlmodels/Model3/dataset/*.jsonl
+mlmodels/Model3/dataset/*.jsonl.gz
+
+# Logs and operating-system files
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db

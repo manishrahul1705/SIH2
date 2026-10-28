@@ -1,0 +1,90 @@
+{
+  "info": {
+    "_postman_id": "df1a9c5e-97e4-4e15-8ef1-d3b681fdd900",
+    "name": "ApprovalTrack API",
+    "description": "Local demo requests. Login stores the session cookie; all mutating API calls include the required CSRF header.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "applicationId", "value": "" },
+    { "key": "documentId", "value": "" },
+    { "key": "resourceId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Session",
+      "item": [
+        {
+          "name": "Login as demo admin",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('login succeeded', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Requested-With", "value": "XMLHttpRequest" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@approvaltrack.demo\",\n  \"password\": \"ApprovalTrack-Demo-2026!\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        { "name": "Current user", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/auth/me" } },
+        { "name": "Logout", "request": { "method": "POST", "header": [{ "key": "X-Requested-With", "value": "XMLHttpRequest" }], "url": "{{baseUrl}}/api/v1/auth/logout" } }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "List applications",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/applications?page=1&pageSize=20" }
+        },
+        {
+          "name": "Create draft application",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Requested-With", "value": "XMLHttpRequest" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"NEW\",\n  \"academic_year\": \"2026-27\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/applications"
+          }
+        },
+        {
+          "name": "Submit draft",
+          "request": { "method": "POST", "header": [{ "key": "X-Requested-With", "value": "XMLHttpRequest" }], "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/submit" }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload PDF/JPEG/PNG",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Requested-With", "value": "XMLHttpRequest" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "doc_type_slot", "value": "Lease Deed", "type": "text" }, { "key": "file", "type": "file", "src": "" }] },
+            "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/documents"
+          }
+        },
+        { "name": "Read extraction", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/documents/{{documentId}}/extraction" } },
+        {
+          "name": "Confirm fields",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-Requested-With", "value": "XMLHttpRequest" }],
+            "body": { "mode": "raw", "raw": "{\n  \"fields\": [{ \"field_name\": \"issue_date\", \"confirmed_value\": \"2026-01-15\" }]\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/documents/{{documentId}}/confirm"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "List users", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/users?page=1&pageSize=20" } },
+        { "name": "List rules", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin/rules" } },
+        {
+          "name": "Run lease expiry scanner",
+          "request": { "method": "POST", "header": [{ "key": "X-Requested-With", "value": "XMLHttpRequest" }], "url": "{{baseUrl}}/api/v1/admin/jobs/leaseExpiryScanner/run" }
+        }
+      ]
+    }
+  ]
+}

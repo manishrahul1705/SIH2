@@ -1,0 +1,7 @@
+node_modules/
+.env
+uploads/
+coverage/
+.vitest/
+.mongo-test/
+*.log

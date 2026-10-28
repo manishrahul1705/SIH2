@@ -1,0 +1,688 @@
+{
+  "model": "M1",
+  "model_version": "m1-v1.0.0",
+  "dataset": {
+    "synthetic_documents": 9600,
+    "source": "synthetic",
+    "classes": [
+      "lease",
+      "fire",
+      "structural",
+      "occupancy_or_building",
+      "nba_letter",
+      "audited_accounts",
+      "aicte_approval_letter",
+      "other"
+    ]
+  },
+  "python": "3.11.9",
+  "scikit_learn": "1.9.1",
+  "seed": 20261026,
+  "selected_parameters": {
+    "word_ngram_range": [
+      1,
+      2
+    ],
+    "char_ngram_range": [
+      3,
+      5
+    ],
+    "C": 0.5
+  },
+  "validation_grid": [
+    {
+      "params": {
+        "word_ngram_range": [
+          1,
+          2
+        ],
+        "char_ngram_range": [
+          3,
+          5
+        ],
+        "C": 0.5
+      },
+      "tuning_macro_f1": 1.0
+    },
+    {
+      "params": {
+        "word_ngram_range": [
+          1,
+          2
+        ],
+        "char_ngram_range": [
+          3,
+          5
+        ],
+        "C": 1.0
+      },
+      "tuning_macro_f1": 1.0
+    },
+    {
+      "params": {
+        "word_ngram_range": [
+          1,
+          2
+        ],
+        "char_ngram_range": [
+          3,
+          5
+        ],
+        "C": 2.0
+      },
+      "tuning_macro_f1": 1.0
+    },
+    {
+      "params": {
+        "word_ngram_range": [
+          1,
+          2
+        ],
+        "char_ngram_range": [
+          2,
+          5
+        ],
+        "C": 1.0
+      },
+      "tuning_macro_f1": 1.0
+    },
+    {
+      "params": {
+        "word_ngram_range": [
+          1,
+          3
+        ],
+        "char_ngram_range": [
+          3,
+          5
+        ],
+        "C": 1.0
+      },
+      "tuning_macro_f1": 1.0
+    },
+    {
+      "params": {
+        "word_ngram_range": [
+          1,
+          2
+        ],
+        "char_ngram_range": [
+          3,
+          6
+        ],
+        "C": 1.0
+      },
+      "tuning_macro_f1": 1.0
+    }
+  ],
+  "calibration": {
+    "method": "sigmoid",
+    "fit_split": "layout-grouped half of validation; model/vectorizers fit on train only"
+  },
+  "grouped_cross_validation": {
+    "fold_scores": [
+      1.0,
+      1.0,
+      0.9993083400920192,
+      0.9970059203687802,
+      0.9993060163048038
+    ],
+    "mean_macro_f1": 0.9991240553531207,
+    "std_macro_f1": 0.001233706256935615,
+    "folds": 5,
+    "group": "layout_id"
+  },
+  "validation": {
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "per_class": {
+      "lease": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "fire": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "structural": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "occupancy_or_building": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "nba_letter": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "audited_accounts": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "aicte_approval_letter": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "other": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 162
+      }
+    },
+    "per_quality": {
+      "clean": {
+        "count": 599,
+        "macro_f1": 1.0
+      },
+      "scanned": {
+        "count": 462,
+        "macro_f1": 1.0
+      },
+      "skewed": {
+        "count": 253,
+        "macro_f1": 1.0
+      },
+      "blurred": {
+        "count": 248,
+        "macro_f1": 1.0
+      }
+    },
+    "zones": {
+      "green": {
+        "count": 1561,
+        "coverage": 0.9993597951344431,
+        "accuracy": 1.0
+      },
+      "amber": {
+        "count": 1,
+        "coverage": 0.0006402048655569782,
+        "accuracy": 1.0
+      },
+      "red": {
+        "count": 0,
+        "coverage": 0.0,
+        "accuracy": null
+      }
+    },
+    "ece": 0.013331008161342119,
+    "reliability": [
+      {
+        "bin": "0.0-0.1",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.1-0.2",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.2-0.3",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.3-0.4",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.4-0.5",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.5-0.6",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.6-0.7",
+        "count": 1,
+        "mean_confidence": 0.6745989267976902,
+        "accuracy": 1.0
+      },
+      {
+        "bin": "0.7-0.8",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.8-0.9",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.9-1.0",
+        "count": 1561,
+        "mean_confidence": 0.9868689086003753,
+        "accuracy": 1.0
+      }
+    ],
+    "confusion_matrix": [
+      [
+        200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        200,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        200,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        200,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        200,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        200,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        162
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.9988023952095808,
+    "macro_f1": 0.9989120331307626,
+    "per_class": {
+      "lease": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "fire": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "structural": {
+        "precision": 0.9950248756218906,
+        "recall": 1.0,
+        "f1": 0.9975062344139651,
+        "support": 200
+      },
+      "occupancy_or_building": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "nba_letter": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "audited_accounts": {
+        "precision": 1.0,
+        "recall": 0.995,
+        "f1": 0.9974937343358395,
+        "support": 200
+      },
+      "aicte_approval_letter": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 200
+      },
+      "other": {
+        "precision": 0.9962962962962963,
+        "recall": 0.9962962962962963,
+        "f1": 0.9962962962962963,
+        "support": 270
+      }
+    },
+    "per_quality": {
+      "clean": {
+        "count": 659,
+        "macro_f1": 0.9987202806288165
+      },
+      "scanned": {
+        "count": 521,
+        "macro_f1": 1.0
+      },
+      "skewed": {
+        "count": 247,
+        "macro_f1": 1.0
+      },
+      "blurred": {
+        "count": 243,
+        "macro_f1": 0.9963492063492063
+      }
+    },
+    "zones": {
+      "green": {
+        "count": 1641,
+        "coverage": 0.9826347305389221,
+        "accuracy": 1.0
+      },
+      "amber": {
+        "count": 28,
+        "coverage": 0.016766467065868262,
+        "accuracy": 0.9642857142857143
+      },
+      "red": {
+        "count": 1,
+        "coverage": 0.0005988023952095808,
+        "accuracy": 0.0
+      }
+    },
+    "ece": 0.018292275442540515,
+    "reliability": [
+      {
+        "bin": "0.0-0.1",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.1-0.2",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.2-0.3",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.3-0.4",
+        "count": 1,
+        "mean_confidence": 0.34665658903910507,
+        "accuracy": 0.0
+      },
+      {
+        "bin": "0.4-0.5",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.5-0.6",
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null
+      },
+      {
+        "bin": "0.6-0.7",
+        "count": 2,
+        "mean_confidence": 0.6452958233665518,
+        "accuracy": 0.5
+      },
+      {
+        "bin": "0.7-0.8",
+        "count": 6,
+        "mean_confidence": 0.761512739709094,
+        "accuracy": 1.0
+      },
+      {
+        "bin": "0.8-0.9",
+        "count": 20,
+        "mean_confidence": 0.8673970175552611,
+        "accuracy": 1.0
+      },
+      {
+        "bin": "0.9-1.0",
+        "count": 1641,
+        "mean_confidence": 0.9842608966833454,
+        "accuracy": 1.0
+      }
+    ],
+    "confusion_matrix": [
+      [
+        200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        200,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        200,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        200,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        199,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        200,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        269
+      ]
+    ]
+  },
+  "stress_tests": {
+    "keyword_ablation": {
+      "macro_f1": 0.9989121789714137,
+      "drop_from_test_macro_f1": -1.4584065111122868e-07,
+      "keywords_removed": [
+        "lease",
+        "lessor",
+        "lessee",
+        "fire",
+        "structural",
+        "accredit",
+        "audit",
+        "occupancy",
+        "approval"
+      ]
+    },
+    "extra_ocr_noise_3pct": {
+      "macro_f1": 0.9989121789714138,
+      "drop_from_test_macro_f1": -1.4584065122225098e-07
+    },
+    "extra_ocr_noise_6pct": {
+      "macro_f1": 0.9972852206815965,
+      "drop_from_test_macro_f1": 0.0016268124491660707
+    },
+    "first_40_percent_truncation": {
+      "macro_f1": 0.9790744596666224,
+      "drop_from_test_macro_f1": 0.019837573464140168
+    }
+  },
+  "sample_predictions": [
+    {
+      "file": "approval_letter_sample.pdf",
+      "expected": "aicte_approval_letter",
+      "predicted": "aicte_approval_letter",
+      "confidence": 0.9867,
+      "zone": "green",
+      "needs_manual_entry": false,
+      "correct": true
+    },
+    {
+      "file": "blurred_scan_ambiguous_date.jpg",
+      "expected": null,
+      "predicted": "other",
+      "confidence": 0.389285,
+      "zone": "red",
+      "needs_manual_entry": false,
+      "correct": null
+    },
+    {
+      "file": "fire_safety_certificate.pdf",
+      "expected": "fire",
+      "predicted": "fire",
+      "confidence": 0.985983,
+      "zone": "green",
+      "needs_manual_entry": false,
+      "correct": true
+    },
+    {
+      "file": "lease_deed_excerpt.pdf",
+      "expected": "lease",
+      "predicted": "lease",
+      "confidence": 0.992213,
+      "zone": "green",
+      "needs_manual_entry": false,
+      "correct": true
+    }
+  ],
+  "other_test_misclassified": [
+    {
+      "doc_id": "M1-003620",
+      "true_label": "other",
+      "predicted_label": "structural",
+      "confidence": 0.34665658903910507,
+      "text_preview": "- Institution = Ilango Engineering College\nFire safety certificate - received.\nLease deed - received.\nStructural stability certificate - pending.\nNBA accreditation letter - not applicable."
+    }
+  ],
+  "targets": {
+    "validation_macro_f1": 0.9,
+    "test_macro_f1": 0.9
+  },
+  "target_met": {
+    "validation": true,
+    "test": true
+  },
+  "honesty": "Works on synthetic data and on layouts unseen in training. A score near 1.0 on synthetic documents does not predict accuracy on real AICTE documents. Only English is covered; the broad 'other' class is less varied than real-world documents. No production accuracy is claimed."
+}

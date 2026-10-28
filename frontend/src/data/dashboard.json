@@ -1,0 +1,20 @@
+{
+  "openUndertakings": 4,
+  "documentsExpiringIn30Days": 2,
+  "casesInProgress": 6,
+  "waitingOnOfficers": 3,
+  "undertakingsDueIn7Days": 2,
+  "officerQueue": {"overdue":3,"dueIn24Hours":5,"ready":12,"upcoming":8,"unassigned":4},
+  "regionStats": [
+    {"region":"South","institutionDays":48,"officerDays":35,"cases":13},
+    {"region":"North","institutionDays":31,"officerDays":56,"cases":11},
+    {"region":"East","institutionDays":27,"officerDays":44,"cases":9},
+    {"region":"West","institutionDays":40,"officerDays":38,"cases":10},
+    {"region":"Central","institutionDays":22,"officerDays":47,"cases":7}
+  ],
+  "officerWorkload": [
+    {"name":"Ravi Menon","cases":12},
+    {"name":"Anita Rao","cases":9},
+    {"name":"K. Das","cases":7}
+  ]
+}

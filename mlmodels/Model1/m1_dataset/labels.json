@@ -1,0 +1,43 @@
+{
+  "model": "M1",
+  "task": "document type classification",
+  "classes": [
+    {
+      "id": "lease",
+      "display_name": "Lease Deed"
+    },
+    {
+      "id": "fire",
+      "display_name": "Fire Safety Certificate"
+    },
+    {
+      "id": "structural",
+      "display_name": "Structural Stability Certificate"
+    },
+    {
+      "id": "occupancy_or_building",
+      "display_name": "Occupancy or Building Certificate"
+    },
+    {
+      "id": "nba_letter",
+      "display_name": "NBA Accreditation Letter"
+    },
+    {
+      "id": "audited_accounts",
+      "display_name": "Audited Accounts"
+    },
+    {
+      "id": "aicte_approval_letter",
+      "display_name": "AICTE Approval Letter"
+    },
+    {
+      "id": "other",
+      "display_name": "Other Document"
+    }
+  ],
+  "confidence_zones": {
+    "green": ">=0.90 pre-filled",
+    "amber": "0.60-0.89 please check",
+    "red": "<0.60 left blank"
+  }
+}

@@ -1,0 +1,9 @@
+,lease,fire,structural,occupancy_or_building,nba_letter,audited_accounts,aicte_approval_letter,other
+lease,200,0,0,0,0,0,0,0
+fire,0,200,0,0,0,0,0,0
+structural,0,0,200,0,0,0,0,0
+occupancy_or_building,0,0,0,200,0,0,0,0
+nba_letter,0,0,0,0,200,0,0,0
+audited_accounts,0,0,0,0,0,200,0,0
+aicte_approval_letter,0,0,0,0,0,0,200,0
+other,0,0,0,0,0,0,0,162

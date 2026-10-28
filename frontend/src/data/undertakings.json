@@ -1,0 +1,6 @@
+[
+  {"id":"UND-1101","caseId":"AT-2026-0040","title":"Submit faculty appointment evidence","condition":"Provide appointment orders for approved faculty strength.","dueDate":"2026-10-27","status":"Open","submission":"Not submitted","verification":"Not verified","dueStatus":"Due within 7 days","closure":"Open"},
+  {"id":"UND-1102","caseId":"AT-2026-0038","title":"Complete laboratory equipment inventory","condition":"Upload a signed inventory for the approved programme.","dueDate":"2026-10-20","status":"Submitted late","submission":"Submitted","verification":"Pending review","dueStatus":"Overdue","closure":"Open"},
+  {"id":"UND-1103","caseId":"AT-2026-0036","title":"Renew fire safety certificate","condition":"Submit a valid fire safety certificate.","dueDate":"2026-11-14","status":"Open","submission":"Not submitted","verification":"Not verified","dueStatus":"Upcoming","closure":"Open"},
+  {"id":"UND-1104","caseId":"AT-2026-0034","title":"Publish disclosure on institute website","condition":"Publish current institutional disclosure.","dueDate":"2026-10-24","status":"Verified","submission":"Submitted","verification":"Verified","dueStatus":"Overdue","closure":"Closed"}
+]

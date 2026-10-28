@@ -1,0 +1,169 @@
+[
+  {
+    "file": "approval_letter_sample.pdf",
+    "expected": "aicte_approval_letter",
+    "prediction": {
+      "model": "M1",
+      "model_version": "m1-v1.0.0",
+      "field": "document_type",
+      "ai_suggested": true,
+      "value": "aicte_approval_letter",
+      "display_name": "AICTE Approval Letter",
+      "confidence": 0.9867,
+      "zone": "green",
+      "prefill": true,
+      "top3": [
+        {
+          "value": "aicte_approval_letter",
+          "display_name": "AICTE Approval Letter",
+          "confidence": 0.9867
+        },
+        {
+          "value": "fire",
+          "display_name": "Fire Safety Certificate",
+          "confidence": 0.006576
+        },
+        {
+          "value": "nba_letter",
+          "display_name": "NBA Accreditation Letter",
+          "confidence": 0.003559
+        }
+      ],
+      "ocr": {
+        "used_ocr": false,
+        "mean_ocr_conf": 1.0,
+        "pages": 1,
+        "warnings": []
+      },
+      "needs_manual_entry": false,
+      "message": null
+    },
+    "correct": true
+  },
+  {
+    "file": "blurred_scan_ambiguous_date.jpg",
+    "expected": null,
+    "prediction": {
+      "model": "M1",
+      "model_version": "m1-v1.0.0",
+      "field": "document_type",
+      "ai_suggested": true,
+      "value": "other",
+      "display_name": "Other Document",
+      "confidence": 0.389285,
+      "zone": "red",
+      "prefill": false,
+      "top3": [
+        {
+          "value": "other",
+          "display_name": "Other Document",
+          "confidence": 0.389285
+        },
+        {
+          "value": "structural",
+          "display_name": "Structural Stability Certificate",
+          "confidence": 0.004068
+        },
+        {
+          "value": "fire",
+          "display_name": "Fire Safety Certificate",
+          "confidence": 0.003227
+        }
+      ],
+      "ocr": {
+        "used_ocr": true,
+        "mean_ocr_conf": 0.242,
+        "pages": 1,
+        "warnings": [
+          "low OCR confidence: results need careful review",
+          "Low OCR confidence reduced the suggestion confidence; review the document manually."
+        ]
+      },
+      "needs_manual_entry": false,
+      "message": "Confidence is below the display threshold; choose a document type manually."
+    },
+    "correct": null
+  },
+  {
+    "file": "fire_safety_certificate.pdf",
+    "expected": "fire",
+    "prediction": {
+      "model": "M1",
+      "model_version": "m1-v1.0.0",
+      "field": "document_type",
+      "ai_suggested": true,
+      "value": "fire",
+      "display_name": "Fire Safety Certificate",
+      "confidence": 0.985983,
+      "zone": "green",
+      "prefill": true,
+      "top3": [
+        {
+          "value": "fire",
+          "display_name": "Fire Safety Certificate",
+          "confidence": 0.985983
+        },
+        {
+          "value": "occupancy_or_building",
+          "display_name": "Occupancy or Building Certificate",
+          "confidence": 0.005714
+        },
+        {
+          "value": "structural",
+          "display_name": "Structural Stability Certificate",
+          "confidence": 0.003166
+        }
+      ],
+      "ocr": {
+        "used_ocr": false,
+        "mean_ocr_conf": 1.0,
+        "pages": 1,
+        "warnings": []
+      },
+      "needs_manual_entry": false,
+      "message": null
+    },
+    "correct": true
+  },
+  {
+    "file": "lease_deed_excerpt.pdf",
+    "expected": "lease",
+    "prediction": {
+      "model": "M1",
+      "model_version": "m1-v1.0.0",
+      "field": "document_type",
+      "ai_suggested": true,
+      "value": "lease",
+      "display_name": "Lease Deed",
+      "confidence": 0.992213,
+      "zone": "green",
+      "prefill": true,
+      "top3": [
+        {
+          "value": "lease",
+          "display_name": "Lease Deed",
+          "confidence": 0.992213
+        },
+        {
+          "value": "aicte_approval_letter",
+          "display_name": "AICTE Approval Letter",
+          "confidence": 0.002003
+        },
+        {
+          "value": "occupancy_or_building",
+          "display_name": "Occupancy or Building Certificate",
+          "confidence": 0.001969
+        }
+      ],
+      "ocr": {
+        "used_ocr": false,
+        "mean_ocr_conf": 1.0,
+        "pages": 2,
+        "warnings": []
+      },
+      "needs_manual_entry": false,
+      "message": null
+    },
+    "correct": true
+  }
+]

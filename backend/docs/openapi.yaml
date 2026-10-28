@@ -1,0 +1,476 @@
+openapi: 3.1.0
+info:
+  title: ApprovalTrack additive case workflow API
+  version: 1.0.0
+  description: |
+    Additive case workflow APIs. The seeded route and checklist configuration
+    are demo assumptions and must be checked against the applicable handbook.
+servers:
+  - url: http://localhost:4000/api/v1
+security:
+  - sessionCookie: []
+paths:
+  /application-types:
+    get:
+      security: []
+      summary: List supported new-workflow application types
+      responses:
+        "200":
+          description: Application type identifiers and labels
+  /checklist/preview:
+    post:
+      summary: Preview policy route and checklist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [applicationType]
+              properties:
+                applicationType:
+                  type: string
+                  enum: [new_institution, new_course, increase_in_intake, extension_of_approval, conversion_diploma_to_degree, collaboration_twinning, restoration_of_intake]
+                applicability:
+                  type: object
+                routeFlags:
+                  type: object
+      responses:
+        "200":
+          description: Route preview and slot statuses, including review_required for unknown conditions
+        "401":
+          description: Sign-in required
+  /policies:
+    get:
+      summary: List policy versions for administrators
+      responses:
+        "200":
+          description: Policy history
+        "403":
+          description: Administrator role required
+    post:
+      summary: Create a policy draft
+      description: Route, checklist, alert, and score values are versioned; only an administrator may create drafts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  type: string
+                  maxLength: 40
+                routes:
+                  type: object
+                checklist:
+                  type: array
+                  items:
+                    type: object
+                stageCompletion:
+                  type: object
+                alertRules:
+                  type: object
+                scoreWeights:
+                  type: object
+                blockSubmitOnMissing:
+                  type: boolean
+                notes:
+                  type: string
+      responses:
+        "201":
+          description: Draft created
+        "400":
+          description: Invalid policy
+        "403":
+          description: Administrator role required
+  /policies/{id}/sign-off:
+    post:
+      summary: Sign off a policy draft and retire the previous active policy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: Policy signed off
+        "404":
+          description: Draft policy not found
+        "403":
+          description: Administrator role required
+  /policies/{a}/diff/{b}:
+    get:
+      summary: Compare two policy versions
+      parameters:
+        - name: a
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: b
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Route, checklist, and submit-policy changes
+        "404":
+          description: One or both versions were not found
+  /cases:
+    get:
+      summary: List cases visible to the authenticated user
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, submitted, in_progress, returned, approved, rejected]
+        - name: applicationType
+          in: query
+          schema:
+            type: string
+            enum: [new_institution, new_course, increase_in_intake, extension_of_approval, conversion_diploma_to_degree, collaboration_twinning, restoration_of_intake]
+      responses:
+        "200":
+          description: Scoped and paginated case list
+        "401":
+          description: Sign-in required
+    post:
+      summary: Create a draft case for the authenticated institution
+      responses:
+        "201":
+          description: Draft case created with a pinned policy version
+        "403":
+          description: Role or scope denied
+  /cases/{id}:
+    get:
+      summary: Retrieve a scoped case and its checklist
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      responses:
+        "200":
+          description: Case details and missing-document status
+        "404":
+          description: Case not found in the user's scope
+    put:
+      summary: Edit an institution-owned draft using optimistic concurrency
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      responses:
+        "200":
+          description: Draft updated
+        "409":
+          description: Version conflict
+  /cases/{id}/submit:
+    post:
+      summary: Submit a case, returning missing documents as warnings unless policy blocks them
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      responses:
+        "200":
+          description: Submitted case and explicit missing-document warning
+        "422":
+          description: Policy blocks submission due to missing required slots
+  /cases/{id}/checklist:
+    get:
+      summary: Retrieve all slot statuses for a case
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      responses:
+        "200":
+          description: Policy-pinned checklist
+  /cases/{id}/documents:
+    post:
+      summary: Upload a versioned document into a case checklist slot
+      description: Multipart upload; AI extraction runs asynchronously and the institution must confirm suggestions.
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, doc_type_slot]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                doc_type_slot:
+                  type: string
+      responses:
+        "202":
+          description: Document stored and queued for AI extraction
+        "415":
+          description: File content or MIME type is not accepted
+        "422":
+          description: Checklist slot is not applicable
+  /documents/{id}/extraction:
+    get:
+      summary: Retrieve a scoped document and its extraction suggestions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document state and AI extraction, if available
+        "404":
+          description: Document is not visible to the authenticated user
+  /documents/{id}/confirm:
+    post:
+      summary: Confirm one or more extracted fields as the institution or administrator
+      description: Amber and red fields require individual confirmation; manual completion is supported after AI failure.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fields]
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    required: [field_name, confirmed_value]
+                    properties:
+                      field_name:
+                        type: string
+                      confirmed_value:
+                        type: string
+                complete:
+                  type: boolean
+      responses:
+        "200":
+          description: Human confirmations recorded
+        "409":
+          description: Extraction is not ready or document has been superseded
+  /documents/{id}/download:
+    get:
+      summary: Download a private case or application document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document file stream
+        "404":
+          description: Document or stored file is not available in the user's scope
+  /cases/{id}/history:
+    get:
+      summary: Retrieve ownership-aware stage history
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      responses:
+        "200":
+          description: Stage transition history
+  /cases/{id}/advance:
+    post:
+      summary: Advance a case held by the authenticated user
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion:
+                  type: integer
+                completedChecklist:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Case advanced with history, audit, and outbox event
+        "409":
+          description: Route or version conflict
+        "422":
+          description: Required stage checklist is incomplete
+  /cases/{id}/return:
+    post:
+      summary: Return a case to an earlier route stage with a written reason
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, targetStage, reason]
+              properties:
+                expectedVersion:
+                  type: integer
+                targetStage:
+                  type: string
+                reason:
+                  type: string
+                  maxLength: 3000
+      responses:
+        "200":
+          description: Returned case with institution ownership
+        "422":
+          description: Missing reason or invalid target
+  /cases/{id}/resubmit:
+    post:
+      summary: Resubmit a returned case for re-scrutiny
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion:
+                  type: integer
+      responses:
+        "200":
+          description: Case resubmitted
+        "409":
+          description: Version or policy conflict
+  /cases/{id}/decision:
+    post:
+      summary: Record the final decision (competent authority only)
+      parameters:
+        - $ref: "#/components/parameters/caseId"
+      responses:
+        "200":
+          description: Decision recorded; conditions become institution obligations
+        "403":
+          description: User is not the competent-authority role
+  /obligations:
+    get:
+      summary: List workflow obligations visible to the authenticated user
+      responses:
+        "200":
+          description: Scoped obligations with computed due status
+        "401":
+          description: Sign-in required
+        "403":
+          description: User role is not permitted to view obligations
+  /cases/events:
+    get:
+      summary: Stream scoped case workflow events
+      description: Server-sent events polled from the durable case outbox; reconnect with Last-Event-ID.
+      responses:
+        "200":
+          description: Event stream using text/event-stream
+        "401":
+          description: Sign-in required
+        "403":
+          description: User role is not permitted to view case events
+  /obligations/{id}/submit-evidence:
+    post:
+      summary: Submit an evidence note for an open institution obligation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [evidenceNote]
+              properties:
+                evidenceNote:
+                  type: string
+                  maxLength: 3000
+      responses:
+        "200":
+          description: Evidence recorded and queued for review
+        "409":
+          description: Obligation is closed or its case is unavailable
+  /obligations/{id}/verify:
+    post:
+      summary: Record an authorised officer's evidence verification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verification]
+              properties:
+                verification:
+                  type: string
+                  enum: [verified, not_verified]
+                reason:
+                  type: string
+                  maxLength: 3000
+      responses:
+        "200":
+          description: Verification recorded; only verified evidence closes the obligation
+        "403":
+          description: User is not an authorised officer
+        "409":
+          description: Evidence has not been submitted
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: approvaltrack_session
+  parameters:
+    caseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string

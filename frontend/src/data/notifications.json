@@ -1,0 +1,7 @@
+[
+  {"id":"NTF-2001","level":"Overdue","obligation":"Fire safety certificate renewal","recipient":"Demo Institute","channel":"In-app","dueDate":"2026-10-20","acknowledged":false},
+  {"id":"NTF-2002","level":"Reminder","obligation":"NBA letter renewal","recipient":"Demo Institute","channel":"Email","dueDate":"2026-11-20","acknowledged":false},
+  {"id":"NTF-2003","level":"Due","obligation":"Faculty appointment evidence","recipient":"Demo Institute","channel":"In-app","dueDate":"2026-10-27","acknowledged":false},
+  {"id":"NTF-2004","level":"Escalation","obligation":"Scrutiny review pending","recipient":"South Regional Office","channel":"Email","dueDate":"2026-10-25","acknowledged":false},
+  {"id":"NTF-2005","level":"Reminder","obligation":"Laboratory inventory response","recipient":"Demo Institute","channel":"SMS","dueDate":"2026-10-29","acknowledged":true}
+]

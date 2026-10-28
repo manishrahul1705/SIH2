@@ -1,0 +1,8 @@
+[
+  {"id":"AUD-0060","time":"2026-10-26T09:42:00+05:30","actor":"Ravi Menon","role":"Regional officer","action":"Opened case for scrutiny","caseId":"AT-2026-0040","reason":null,"denied":false},
+  {"id":"AUD-0059","time":"2026-10-26T09:30:00+05:30","actor":"Jordan Lee","role":"Institution user","action":"Attempted cross-institution document access","caseId":"AT-2026-0030","reason":"Access denied: institution scope mismatch","denied":true},
+  {"id":"AUD-0058","time":"2026-10-26T09:18:00+05:30","actor":"Ravi Menon","role":"Regional officer","action":"Attempted return without reason","caseId":"AT-2026-0038","reason":"Return blocked because a written reason is required","denied":true},
+  {"id":"AUD-0057","time":"2026-10-25T17:05:00+05:30","actor":"Jordan Lee","role":"Institution user","action":"Submitted fire certificate renewal","caseId":"AT-2026-0040","reason":"Pending separate officer verification","denied":false},
+  {"id":"AUD-0056","time":"2026-10-25T15:32:00+05:30","actor":"Asha Iyer","role":"EVC member","action":"Scheduled EVC visit","caseId":"AT-2026-0037","reason":"Online visit scheduled for 03 November","denied":false},
+  {"id":"AUD-0055","time":"2026-10-25T13:10:00+05:30","actor":"Ravi Menon","role":"Regional officer","action":"Verified NBA letter","caseId":"AT-2026-0040","reason":"Validity confirmed against submitted record","denied":false}
+]

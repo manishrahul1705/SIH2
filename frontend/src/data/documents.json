@@ -1,0 +1,8 @@
+[
+  {"id":"DOC-4001","institution":"Demo Institute","type":"Fire safety certificate","name":"Fire_Certificate_2025.pdf","validTo":"2026-10-20","verification":"Verified","renewal":"Expired","aiFlag":false},
+  {"id":"DOC-4002","institution":"Demo Institute","type":"NBA letter","name":"NBA_Accreditation_Letter.pdf","validTo":"2026-11-20","verification":"Verified","renewal":"Renewal due soon","aiFlag":false},
+  {"id":"DOC-4003","institution":"Demo Institute","type":"Lease","name":"Campus_Lease_2024.pdf","validTo":"2029-03-31","verification":"Pending verification","renewal":"Current","aiFlag":true},
+  {"id":"DOC-4004","institution":"Demo Institute","type":"Structural stability","name":"Structural_Safety.pdf","validTo":"2027-04-14","verification":"Verified","renewal":"Current","aiFlag":false},
+  {"id":"DOC-4005","institution":"North Valley College","type":"Occupancy certificate","name":"Occupancy_Certificate.pdf","validTo":"2027-08-18","verification":"Verified","renewal":"Current","aiFlag":false},
+  {"id":"DOC-4006","institution":"Western Polytechnic","type":"Audited accounts","name":"Audited_Accounts_FY25.pdf","validTo":"2027-03-31","verification":"Pending verification","renewal":"Submitted","aiFlag":false}
+]

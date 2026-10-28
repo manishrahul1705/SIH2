@@ -1,0 +1,2486 @@
+{
+  "model_version": "m2-1.0.0",
+  "trained_at_utc": "2026-10-27T07:57:03.149262+00:00",
+  "dataset_report_sha256": "99be0dc500f4f7ab196664a0ee075d6223af4aeeb7a318032d4571a1f99a75ce",
+  "dataset_sizes": {
+    "train_documents": 7502,
+    "validation_documents": 2247,
+    "train_candidates": 125859,
+    "validation_candidates": 38494,
+    "train_layouts_checked_with_find_candidates": 80,
+    "validation_layouts_checked_with_find_candidates": 24,
+    "test_documents": 2251,
+    "test_candidates": 37070,
+    "test_layouts": 24,
+    "test_layouts_checked_with_find_candidates": 24
+  },
+  "validation_selection": {
+    "date": {
+      "selected_algorithm": "hist_gradient_boosting",
+      "selected_text_variant": "word",
+      "layout_grouped_validation_macro_f1": 0.9674316428832683,
+      "layout_scores": {
+        "aicte_approval_letter_L05": 1.0,
+        "aicte_approval_letter_L09": 1.0,
+        "audited_accounts_L06": 1.0,
+        "audited_accounts_L08": 1.0,
+        "fire_L01": 1.0,
+        "fire_L10": 0.992969065769314,
+        "lease_L07": 0.9973141264389471,
+        "lease_L10": 1.0,
+        "nba_letter_L02": 0.5503896733376701,
+        "nba_letter_L03": 1.0,
+        "occupancy_building_L02": 1.0,
+        "occupancy_building_L06": 1.0,
+        "other_L00": 1.0,
+        "other_L12": 0.9382334205863617,
+        "structural_L11": 1.0,
+        "structural_L13": 1.0
+      },
+      "calibration_layouts": [
+        "aicte_approval_letter_L12",
+        "audited_accounts_L15",
+        "fire_L13",
+        "lease_L13",
+        "nba_letter_L12",
+        "occupancy_building_L08",
+        "other_L13",
+        "structural_L14"
+      ],
+      "candidate_comparison": [
+        {
+          "algorithm": "logistic",
+          "text_variant": "word",
+          "layout_grouped_validation_macro_f1": 0.8489782912256568,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 0.9172004404231893,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 0.3333333333333333,
+            "audited_accounts_L08": 0.3333333333333333,
+            "fire_L01": 1.0,
+            "fire_L10": 0.9027940220922677,
+            "lease_L07": 0.8752425326346635,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.8590079365079365,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 0.9355796687607082,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 0.7343137239198324,
+            "other_L12": 0.6928476686052444,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "logistic",
+          "text_variant": "char",
+          "layout_grouped_validation_macro_f1": 0.8550514646971207,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 0.9355796687607082,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 0.3333333333333333,
+            "audited_accounts_L08": 0.3333333333333333,
+            "fire_L01": 1.0,
+            "fire_L10": 0.929353379068749,
+            "lease_L07": 0.9269379080969147,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.8590079365079365,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 0.9355796687607082,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 0.7343137239198324,
+            "other_L12": 0.693384483372415,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "hist_gradient_boosting",
+          "text_variant": "word",
+          "layout_grouped_validation_macro_f1": 0.9674316428832683,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 0.992969065769314,
+            "lease_L07": 0.9973141264389471,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.5503896733376701,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 1.0,
+            "other_L12": 0.9382334205863617,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "hist_gradient_boosting",
+          "text_variant": "char",
+          "layout_grouped_validation_macro_f1": 0.9395560526710107,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 0.6648841354723708,
+            "fire_L01": 1.0,
+            "fire_L10": 0.9906574740207833,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.5521913715340552,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 0.9931717490333657,
+            "other_L12": 0.8319921126755965,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        }
+      ]
+    },
+    "number": {
+      "selected_algorithm": "logistic",
+      "selected_text_variant": "word",
+      "layout_grouped_validation_macro_f1": 0.9829053740290442,
+      "layout_scores": {
+        "aicte_approval_letter_L05": 1.0,
+        "aicte_approval_letter_L09": 1.0,
+        "audited_accounts_L06": 1.0,
+        "audited_accounts_L08": 1.0,
+        "fire_L01": 1.0,
+        "fire_L10": 1.0,
+        "lease_L07": 1.0,
+        "lease_L10": 1.0,
+        "nba_letter_L02": 0.7264859844647078,
+        "nba_letter_L03": 1.0,
+        "occupancy_building_L02": 1.0,
+        "occupancy_building_L06": 1.0,
+        "other_L00": 1.0,
+        "other_L12": 1.0,
+        "structural_L11": 1.0,
+        "structural_L13": 1.0
+      },
+      "calibration_layouts": [
+        "aicte_approval_letter_L12",
+        "audited_accounts_L15",
+        "fire_L13",
+        "lease_L13",
+        "nba_letter_L12",
+        "occupancy_building_L08",
+        "other_L13",
+        "structural_L14"
+      ],
+      "candidate_comparison": [
+        {
+          "algorithm": "logistic",
+          "text_variant": "word",
+          "layout_grouped_validation_macro_f1": 0.9829053740290442,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 1.0,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.7264859844647078,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 1.0,
+            "other_L12": 1.0,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "logistic",
+          "text_variant": "char",
+          "layout_grouped_validation_macro_f1": 0.9799804723651575,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 1.0,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.6796875578425202,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 1.0,
+            "other_L12": 1.0,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "hist_gradient_boosting",
+          "text_variant": "word",
+          "layout_grouped_validation_macro_f1": 0.9793394023230714,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 0.996850465815597,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 1.0,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.672579971353545,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 1.0,
+            "other_L12": 1.0,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "hist_gradient_boosting",
+          "text_variant": "char",
+          "layout_grouped_validation_macro_f1": 0.9785357212029988,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 0.9872329015757776,
+            "aicte_approval_letter_L09": 0.9967586663186583,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 1.0,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.672579971353545,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 1.0,
+            "other_L12": 1.0,
+            "structural_L11": 1.0,
+            "structural_L13": 1.0
+          }
+        }
+      ]
+    },
+    "issuer": {
+      "selected_algorithm": "logistic",
+      "selected_text_variant": "char",
+      "layout_grouped_validation_macro_f1": 0.9978900127869805,
+      "layout_scores": {
+        "aicte_approval_letter_L05": 1.0,
+        "aicte_approval_letter_L09": 1.0,
+        "audited_accounts_L06": 1.0,
+        "audited_accounts_L08": 1.0,
+        "fire_L01": 1.0,
+        "fire_L10": 0.9882246376811594,
+        "lease_L07": 1.0,
+        "lease_L10": 1.0,
+        "nba_letter_L02": 1.0,
+        "nba_letter_L03": 1.0,
+        "occupancy_building_L02": 1.0,
+        "occupancy_building_L06": 1.0,
+        "other_L00": 1.0,
+        "other_L12": 0.9968276987220157,
+        "structural_L11": 0.9811878681885124,
+        "structural_L13": 1.0
+      },
+      "calibration_layouts": [
+        "aicte_approval_letter_L12",
+        "audited_accounts_L15",
+        "fire_L13",
+        "lease_L13",
+        "nba_letter_L12",
+        "occupancy_building_L08",
+        "other_L13",
+        "structural_L14"
+      ],
+      "candidate_comparison": [
+        {
+          "algorithm": "logistic",
+          "text_variant": "word",
+          "layout_grouped_validation_macro_f1": 0.9973447398883747,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 0.9794859511875535,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.9969876791733496,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 0.9969364915951501,
+            "other_L12": 0.9936276399777235,
+            "structural_L11": 0.9904780762802183,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "logistic",
+          "text_variant": "char",
+          "layout_grouped_validation_macro_f1": 0.9978900127869805,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 0.9882246376811594,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 1.0,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 1.0,
+            "other_L12": 0.9968276987220157,
+            "structural_L11": 0.9811878681885124,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "hist_gradient_boosting",
+          "text_variant": "word",
+          "layout_grouped_validation_macro_f1": 0.9655398258571163,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 0.9911282669197385,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.5120806943467042,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 0.9612723057468033,
+            "other_L12": 0.9967997848594864,
+            "structural_L11": 0.9873561618411284,
+            "structural_L13": 1.0
+          }
+        },
+        {
+          "algorithm": "hist_gradient_boosting",
+          "text_variant": "char",
+          "layout_grouped_validation_macro_f1": 0.9883687970967691,
+          "layout_scores": {
+            "aicte_approval_letter_L05": 1.0,
+            "aicte_approval_letter_L09": 1.0,
+            "audited_accounts_L06": 1.0,
+            "audited_accounts_L08": 1.0,
+            "fire_L01": 1.0,
+            "fire_L10": 0.9824952661476962,
+            "lease_L07": 1.0,
+            "lease_L10": 1.0,
+            "nba_letter_L02": 0.8470307041735614,
+            "nba_letter_L03": 1.0,
+            "occupancy_building_L02": 1.0,
+            "occupancy_building_L06": 1.0,
+            "other_L00": 0.9875752248292651,
+            "other_L12": 1.0,
+            "structural_L11": 0.9967995583977826,
+            "structural_L13": 1.0
+          }
+        }
+      ]
+    }
+  },
+  "test": {
+    "fields": {
+      "issue_date": {
+        "exact_match_accuracy": 0.8436685773840542,
+        "exact_match_documents": 1919,
+        "exact_match_95pct_hierarchical_bootstrap_ci": [
+          0.7315182306740025,
+          0.9294965073907727
+        ],
+        "span_f1": 0.8924986793449551,
+        "span_counts": {
+          "true_positive_words": 3379,
+          "false_positive_words": 2,
+          "false_negative_words": 812
+        },
+        "span_f1_95pct_hierarchical_bootstrap_ci": [
+          0.7997493567413991,
+          0.9590101170531484
+        ],
+        "expected_value_decision_accuracy": 0.8667258996001777
+      },
+      "valid_to": {
+        "exact_match_accuracy": 0.915876027830487,
+        "exact_match_documents": 1581,
+        "exact_match_95pct_hierarchical_bootstrap_ci": [
+          0.86524962868851,
+          0.9490674677231735
+        ],
+        "span_f1": 0.9783743475018642,
+        "span_counts": {
+          "true_positive_words": 3280,
+          "false_positive_words": 0,
+          "false_negative_words": 145
+        },
+        "span_f1_95pct_hierarchical_bootstrap_ci": [
+          0.9620210094972039,
+          0.9869178267919771
+        ],
+        "expected_value_decision_accuracy": 0.9409151488227454
+      },
+      "cert_no": {
+        "exact_match_accuracy": 0.9973345179920036,
+        "exact_match_documents": 2251,
+        "exact_match_95pct_hierarchical_bootstrap_ci": [
+          0.9933403547671841,
+          1.0
+        ],
+        "span_f1": 0.9986654804270463,
+        "span_counts": {
+          "true_positive_words": 2245,
+          "false_positive_words": 0,
+          "false_negative_words": 6
+        },
+        "span_f1_95pct_hierarchical_bootstrap_ci": [
+          0.9966590526076912,
+          1.0
+        ],
+        "expected_value_decision_accuracy": 0.9973345179920036
+      },
+      "issuer": {
+        "exact_match_accuracy": 0.9893380719680143,
+        "exact_match_documents": 2251,
+        "exact_match_95pct_hierarchical_bootstrap_ci": [
+          0.9691129366489046,
+          1.0
+        ],
+        "span_f1": 0.9568060416282925,
+        "span_counts": {
+          "true_positive_words": 10389,
+          "false_positive_words": 0,
+          "false_negative_words": 938
+        },
+        "span_f1_95pct_hierarchical_bootstrap_ci": [
+          0.9009378176627358,
+          1.0
+        ],
+        "expected_value_decision_accuracy": 0.9893380719680143
+      }
+    },
+    "valid_to_false_fill": {
+      "documents_without_valid_to": 425,
+      "false_filled_documents": 0,
+      "false_fill_rate": 0.0,
+      "target_below_0_02": true
+    },
+    "ambiguity": {
+      "expected_ambiguous_fields": 577,
+      "flagged_fields": 908,
+      "true_positive_flags": 577,
+      "recall": 1.0,
+      "precision": 0.6354625550660793
+    },
+    "calibration": {
+      "date": {
+        "candidate_count": 9252,
+        "top_class_ece": 0.020305684293851725,
+        "reliability_bins": [
+          {
+            "lower": 0.4,
+            "upper": 0.5,
+            "count": 8,
+            "mean_confidence": 0.47251585409639135,
+            "accuracy": 0.375
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.6000000000000001,
+            "count": 236,
+            "mean_confidence": 0.544113169130219,
+            "accuracy": 0.5042372881355932
+          },
+          {
+            "lower": 0.6000000000000001,
+            "upper": 0.7000000000000001,
+            "count": 185,
+            "mean_confidence": 0.6524513588228559,
+            "accuracy": 0.4756756756756757
+          },
+          {
+            "lower": 0.7000000000000001,
+            "upper": 0.8,
+            "count": 167,
+            "mean_confidence": 0.7474611672461556,
+            "accuracy": 0.5029940119760479
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 187,
+            "mean_confidence": 0.8500963666107739,
+            "accuracy": 0.7967914438502673
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 8469,
+            "mean_confidence": 0.996360824119809,
+            "accuracy": 0.9852402881095761
+          }
+        ],
+        "classwise_one_vs_rest": {
+          "issue_date": {
+            "ece": 0.017308698953938113,
+            "positive_count": 2532,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 6466,
+                "mean_probability": 0.0015109306453633883,
+                "observed_frequency": 0.011599133931333128
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 111,
+                "mean_probability": 0.14751100848138757,
+                "observed_frequency": 0.21621621621621623
+              },
+              {
+                "lower": 0.2,
+                "upper": 0.30000000000000004,
+                "count": 81,
+                "mean_probability": 0.2505875952520823,
+                "observed_frequency": 0.6296296296296297
+              },
+              {
+                "lower": 0.30000000000000004,
+                "upper": 0.4,
+                "count": 79,
+                "mean_probability": 0.3528249757636874,
+                "observed_frequency": 0.6455696202531646
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 104,
+                "mean_probability": 0.4555974510512379,
+                "observed_frequency": 0.5384615384615384
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 115,
+                "mean_probability": 0.5438985374744756,
+                "observed_frequency": 0.5826086956521739
+              },
+              {
+                "lower": 0.6000000000000001,
+                "upper": 0.7000000000000001,
+                "count": 89,
+                "mean_probability": 0.651318424557967,
+                "observed_frequency": 0.6404494382022472
+              },
+              {
+                "lower": 0.7000000000000001,
+                "upper": 0.8,
+                "count": 73,
+                "mean_probability": 0.7446032721033962,
+                "observed_frequency": 0.589041095890411
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 45,
+                "mean_probability": 0.8457268161831794,
+                "observed_frequency": 0.6888888888888889
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 2089,
+                "mean_probability": 0.993775188196083,
+                "observed_frequency": 0.9942556247008137
+              }
+            ]
+          },
+          "none": {
+            "ece": 0.012987603671863569,
+            "positive_count": 4894,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 4134,
+                "mean_probability": 0.003692771755878405,
+                "observed_frequency": 0.0077406869859700045
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 43,
+                "mean_probability": 0.1485292417378947,
+                "observed_frequency": 0.37209302325581395
+              },
+              {
+                "lower": 0.2,
+                "upper": 0.30000000000000004,
+                "count": 67,
+                "mean_probability": 0.26098699460574937,
+                "observed_frequency": 0.5074626865671642
+              },
+              {
+                "lower": 0.30000000000000004,
+                "upper": 0.4,
+                "count": 89,
+                "mean_probability": 0.3488809312519719,
+                "observed_frequency": 0.4606741573033708
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 89,
+                "mean_probability": 0.4541855144727126,
+                "observed_frequency": 0.5955056179775281
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 81,
+                "mean_probability": 0.5419580453600666,
+                "observed_frequency": 0.6419753086419753
+              },
+              {
+                "lower": 0.6000000000000001,
+                "upper": 0.7000000000000001,
+                "count": 48,
+                "mean_probability": 0.6501439036036244,
+                "observed_frequency": 0.6041666666666666
+              },
+              {
+                "lower": 0.7000000000000001,
+                "upper": 0.8,
+                "count": 52,
+                "mean_probability": 0.7512571472763321,
+                "observed_frequency": 0.7307692307692307
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 120,
+                "mean_probability": 0.8524929987412779,
+                "observed_frequency": 0.9416666666666667
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 4529,
+                "mean_probability": 0.9977254382436455,
+                "observed_frequency": 0.9905056303819828
+              }
+            ]
+          },
+          "valid_to": {
+            "ece": 0.023654248735420623,
+            "positive_count": 1826,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 7111,
+                "mean_probability": 0.0013182769065728552,
+                "observed_frequency": 0.004781324708198566
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 50,
+                "mean_probability": 0.14873121872337128,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.2,
+                "upper": 0.30000000000000004,
+                "count": 25,
+                "mean_probability": 0.23386869645934294,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.30000000000000004,
+                "upper": 0.4,
+                "count": 23,
+                "mean_probability": 0.3290343871734768,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 40,
+                "mean_probability": 0.45946446411820147,
+                "observed_frequency": 0.025
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 40,
+                "mean_probability": 0.54909436077504,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.6000000000000001,
+                "upper": 0.7000000000000001,
+                "count": 48,
+                "mean_probability": 0.6568594629915688,
+                "observed_frequency": 0.041666666666666664
+              },
+              {
+                "lower": 0.7000000000000001,
+                "upper": 0.8,
+                "count": 42,
+                "mean_probability": 0.747728676385495,
+                "observed_frequency": 0.07142857142857142
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 22,
+                "mean_probability": 0.8459615445008327,
+                "observed_frequency": 0.22727272727272727
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 1851,
+                "mean_probability": 0.9959400008231092,
+                "observed_frequency": 0.9621826039978391
+              }
+            ]
+          }
+        }
+      },
+      "number": {
+        "candidate_count": 12818,
+        "top_class_ece": 0.0005055491004614734,
+        "reliability_bins": [
+          {
+            "lower": 0.5,
+            "upper": 0.6000000000000001,
+            "count": 3,
+            "mean_confidence": 0.5412723309779741,
+            "accuracy": 0.3333333333333333
+          },
+          {
+            "lower": 0.6000000000000001,
+            "upper": 0.7000000000000001,
+            "count": 5,
+            "mean_confidence": 0.6733131365352846,
+            "accuracy": 0.6
+          },
+          {
+            "lower": 0.7000000000000001,
+            "upper": 0.8,
+            "count": 9,
+            "mean_confidence": 0.7712842178335484,
+            "accuracy": 0.8888888888888888
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 14,
+            "mean_confidence": 0.851998555119425,
+            "accuracy": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 12787,
+            "mean_confidence": 0.9998154935930024,
+            "accuracy": 1.0
+          }
+        ],
+        "classwise_one_vs_rest": {
+          "cert_no": {
+            "ece": 0.0008316439422765957,
+            "positive_count": 2251,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 10563,
+                "mean_probability": 1.5271177219642935e-05,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 4,
+                "mean_probability": 0.16673476875003182,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.2,
+                "upper": 0.30000000000000004,
+                "count": 1,
+                "mean_probability": 0.23879845328461052,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.30000000000000004,
+                "upper": 0.4,
+                "count": 2,
+                "mean_probability": 0.3584712033052255,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 2,
+                "mean_probability": 0.481967311650544,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 1,
+                "mean_probability": 0.5877516162350104,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.6000000000000001,
+                "upper": 0.7000000000000001,
+                "count": 3,
+                "mean_probability": 0.694502696428958,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.7000000000000001,
+                "upper": 0.8,
+                "count": 8,
+                "mean_probability": 0.7725445517233183,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 10,
+                "mean_probability": 0.8594918846672078,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 2224,
+                "mean_probability": 0.9990117023465347,
+                "observed_frequency": 1.0
+              }
+            ]
+          },
+          "none": {
+            "ece": 0.000831643942276606,
+            "positive_count": 10567,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 2224,
+                "mean_probability": 0.000988297653465254,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 10,
+                "mean_probability": 0.14050811533279223,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.2,
+                "upper": 0.30000000000000004,
+                "count": 8,
+                "mean_probability": 0.22745544827668177,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.30000000000000004,
+                "upper": 0.4,
+                "count": 3,
+                "mean_probability": 0.30549730357104204,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 1,
+                "mean_probability": 0.4122483837649896,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 2,
+                "mean_probability": 0.5180326883494559,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.6000000000000001,
+                "upper": 0.7000000000000001,
+                "count": 2,
+                "mean_probability": 0.6415287966947745,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.7000000000000001,
+                "upper": 0.8,
+                "count": 1,
+                "mean_probability": 0.7612015467153895,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 4,
+                "mean_probability": 0.8332652312499681,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 10563,
+                "mean_probability": 0.9999847288227803,
+                "observed_frequency": 1.0
+              }
+            ]
+          }
+        }
+      },
+      "issuer": {
+        "candidate_count": 15000,
+        "top_class_ece": 0.0011838447993094206,
+        "reliability_bins": [
+          {
+            "lower": 0.5,
+            "upper": 0.6000000000000001,
+            "count": 5,
+            "mean_confidence": 0.5540929101295119,
+            "accuracy": 0.2
+          },
+          {
+            "lower": 0.6000000000000001,
+            "upper": 0.7000000000000001,
+            "count": 5,
+            "mean_confidence": 0.6536204901904619,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.7000000000000001,
+            "upper": 0.8,
+            "count": 3,
+            "mean_confidence": 0.741660112974812,
+            "accuracy": 0.0
+          },
+          {
+            "lower": 0.8,
+            "upper": 0.9,
+            "count": 15,
+            "mean_confidence": 0.8357169684247129,
+            "accuracy": 0.26666666666666666
+          },
+          {
+            "lower": 0.9,
+            "upper": 1.0,
+            "count": 14972,
+            "mean_confidence": 0.9998691978277621,
+            "accuracy": 1.0
+          }
+        ],
+        "classwise_one_vs_rest": {
+          "issuer": {
+            "ece": 0.0013278382958631953,
+            "positive_count": 2438,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 12562,
+                "mean_probability": 6.239294841458724e-05,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 11,
+                "mean_probability": 0.1653312431965765,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.2,
+                "upper": 0.30000000000000004,
+                "count": 3,
+                "mean_probability": 0.2583398870251879,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.30000000000000004,
+                "upper": 0.4,
+                "count": 5,
+                "mean_probability": 0.3463795098095381,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 4,
+                "mean_probability": 0.4487965059167144,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 1,
+                "mean_probability": 0.5656505743144169,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 4,
+                "mean_probability": 0.8385995503832586,
+                "observed_frequency": 1.0
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 2410,
+                "mean_probability": 0.9995126182967785,
+                "observed_frequency": 1.0
+              }
+            ]
+          },
+          "none": {
+            "ece": 0.0013278382958631877,
+            "positive_count": 12562,
+            "reliability_bins": [
+              {
+                "lower": 0.0,
+                "upper": 0.1,
+                "count": 2410,
+                "mean_probability": 0.00048738170322142245,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.1,
+                "upper": 0.2,
+                "count": 4,
+                "mean_probability": 0.16140044961674138,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.4,
+                "upper": 0.5,
+                "count": 1,
+                "mean_probability": 0.43434942568558316,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.5,
+                "upper": 0.6000000000000001,
+                "count": 4,
+                "mean_probability": 0.5512034940832856,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.6000000000000001,
+                "upper": 0.7000000000000001,
+                "count": 5,
+                "mean_probability": 0.6536204901904619,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.7000000000000001,
+                "upper": 0.8,
+                "count": 3,
+                "mean_probability": 0.741660112974812,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.8,
+                "upper": 0.9,
+                "count": 11,
+                "mean_probability": 0.8346687568034235,
+                "observed_frequency": 0.0
+              },
+              {
+                "lower": 0.9,
+                "upper": 1.0,
+                "count": 12562,
+                "mean_probability": 0.9999376070515854,
+                "observed_frequency": 1.0
+              }
+            ]
+          }
+        }
+      }
+    },
+    "zones": {
+      "issue_date": {
+        "amber": {
+          "documents": 246,
+          "coverage": 0.10928476232785429,
+          "expected_value_accuracy": 0.9959349593495935
+        },
+        "green": {
+          "documents": 1375,
+          "coverage": 0.6108396268325189,
+          "expected_value_accuracy": 0.9992727272727273
+        },
+        "red": {
+          "documents": 630,
+          "coverage": 0.2798756108396268,
+          "expected_value_accuracy": 0.526984126984127
+        }
+      },
+      "valid_to": {
+        "amber": {
+          "documents": 4,
+          "coverage": 0.001776988005330964,
+          "expected_value_accuracy": 1.0
+        },
+        "green": {
+          "documents": 1444,
+          "coverage": 0.6414926699244781,
+          "expected_value_accuracy": 1.0
+        },
+        "red": {
+          "documents": 803,
+          "coverage": 0.35673034207019105,
+          "expected_value_accuracy": 0.8343711083437111
+        }
+      },
+      "cert_no": {
+        "amber": {
+          "documents": 21,
+          "coverage": 0.009329187027987561,
+          "expected_value_accuracy": 1.0
+        },
+        "green": {
+          "documents": 2224,
+          "coverage": 0.988005330964016,
+          "expected_value_accuracy": 1.0
+        },
+        "red": {
+          "documents": 6,
+          "coverage": 0.0026654820079964462,
+          "expected_value_accuracy": 0.0
+        }
+      },
+      "issuer": {
+        "amber": {
+          "documents": 191,
+          "coverage": 0.08485117725455353,
+          "expected_value_accuracy": 1.0
+        },
+        "green": {
+          "documents": 2036,
+          "coverage": 0.9044868947134607,
+          "expected_value_accuracy": 1.0
+        },
+        "red": {
+          "documents": 24,
+          "coverage": 0.010661928031985785,
+          "expected_value_accuracy": 0.0
+        }
+      }
+    },
+    "breakdowns": {
+      "doc_type": {
+        "aicte_approval_letter": {
+          "issue_date": {
+            "accuracy": 0.9689922480620154,
+            "documents": 258
+          },
+          "valid_to": {
+            "accuracy": 0.9516728624535316,
+            "documents": 269
+          },
+          "cert_no": {
+            "accuracy": 0.99644128113879,
+            "documents": 281
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 281
+          }
+        },
+        "audited_accounts": {
+          "issue_date": {
+            "accuracy": 0.6865671641791045,
+            "documents": 268
+          },
+          "valid_to": {
+            "accuracy": null,
+            "documents": 0
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 281
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 281
+          }
+        },
+        "fire": {
+          "issue_date": {
+            "accuracy": 0.9282700421940928,
+            "documents": 237
+          },
+          "valid_to": {
+            "accuracy": 0.9156118143459916,
+            "documents": 237
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 282
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 282
+          }
+        },
+        "lease": {
+          "issue_date": {
+            "accuracy": 0.809322033898305,
+            "documents": 236
+          },
+          "valid_to": {
+            "accuracy": 0.9576271186440678,
+            "documents": 236
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 282
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 282
+          }
+        },
+        "nba_letter": {
+          "issue_date": {
+            "accuracy": 0.768,
+            "documents": 250
+          },
+          "valid_to": {
+            "accuracy": 0.9251968503937008,
+            "documents": 254
+          },
+          "cert_no": {
+            "accuracy": 0.9928825622775801,
+            "documents": 281
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 281
+          }
+        },
+        "occupancy_building": {
+          "issue_date": {
+            "accuracy": 0.9926470588235294,
+            "documents": 272
+          },
+          "valid_to": {
+            "accuracy": 0.9819494584837545,
+            "documents": 277
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 281
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 281
+          }
+        },
+        "other": {
+          "issue_date": {
+            "accuracy": 0.680628272251309,
+            "documents": 191
+          },
+          "valid_to": {
+            "accuracy": 0.6428571428571429,
+            "documents": 98
+          },
+          "cert_no": {
+            "accuracy": 0.9893238434163701,
+            "documents": 281
+          },
+          "issuer": {
+            "accuracy": 0.9145907473309609,
+            "documents": 281
+          }
+        },
+        "structural": {
+          "issue_date": {
+            "accuracy": 0.8792270531400966,
+            "documents": 207
+          },
+          "valid_to": {
+            "accuracy": 0.8523809523809524,
+            "documents": 210
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 282
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 282
+          }
+        }
+      },
+      "noisy": {
+        "0": {
+          "issue_date": {
+            "accuracy": 0.8315488936473947,
+            "documents": 1401
+          },
+          "valid_to": {
+            "accuracy": 0.9148753224419605,
+            "documents": 1163
+          },
+          "cert_no": {
+            "accuracy": 0.9975669099756691,
+            "documents": 1644
+          },
+          "issuer": {
+            "accuracy": 0.9872262773722628,
+            "documents": 1644
+          }
+        },
+        "1": {
+          "issue_date": {
+            "accuracy": 0.8764478764478765,
+            "documents": 518
+          },
+          "valid_to": {
+            "accuracy": 0.9186602870813397,
+            "documents": 418
+          },
+          "cert_no": {
+            "accuracy": 0.9967051070840197,
+            "documents": 607
+          },
+          "issuer": {
+            "accuracy": 0.9950576606260296,
+            "documents": 607
+          }
+        }
+      },
+      "date_format": {
+        "%B %d, %Y": {
+          "issue_date": {
+            "accuracy": 0.6149732620320856,
+            "documents": 187
+          },
+          "valid_to": {
+            "accuracy": 0.9811320754716981,
+            "documents": 106
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 187
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 187
+          }
+        },
+        "%Y-%m-%d": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 72
+          },
+          "valid_to": {
+            "accuracy": null,
+            "documents": 0
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 72
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 72
+          }
+        },
+        "%d %B %Y": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 21
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 21
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 21
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 21
+          }
+        },
+        "%d %B, %Y": {
+          "issue_date": {
+            "accuracy": 0.8366013071895425,
+            "documents": 306
+          },
+          "valid_to": {
+            "accuracy": 0.9901960784313726,
+            "documents": 306
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 306
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 306
+          }
+        },
+        "%d %b %Y": {
+          "issue_date": {
+            "accuracy": 0.9968944099378882,
+            "documents": 322
+          },
+          "valid_to": {
+            "accuracy": 0.9968944099378882,
+            "documents": 322
+          },
+          "cert_no": {
+            "accuracy": 0.9968944099378882,
+            "documents": 322
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 322
+          }
+        },
+        "%d-%b-%Y": {
+          "issue_date": {
+            "accuracy": 0.996268656716418,
+            "documents": 268
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 166
+          },
+          "cert_no": {
+            "accuracy": 0.996268656716418,
+            "documents": 268
+          },
+          "issuer": {
+            "accuracy": 0.9850746268656716,
+            "documents": 268
+          }
+        },
+        "%d-%m-%Y": {
+          "issue_date": {
+            "accuracy": 0.6614583333333334,
+            "documents": 192
+          },
+          "valid_to": {
+            "accuracy": 0.8148148148148148,
+            "documents": 189
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 310
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 310
+          }
+        },
+        "%d.%m.%Y": {
+          "issue_date": {
+            "accuracy": 0.8387096774193549,
+            "documents": 31
+          },
+          "valid_to": {
+            "accuracy": 0.6818181818181818,
+            "documents": 22
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 52
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 52
+          }
+        },
+        "%d/%m/%Y": {
+          "issue_date": {
+            "accuracy": 0.6875,
+            "documents": 208
+          },
+          "valid_to": {
+            "accuracy": 0.7701863354037267,
+            "documents": 161
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 333
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 333
+          }
+        },
+        "%d/%m/%y": {
+          "issue_date": {
+            "accuracy": 0.7172413793103448,
+            "documents": 145
+          },
+          "valid_to": {
+            "accuracy": 0.6033057851239669,
+            "documents": 121
+          },
+          "cert_no": {
+            "accuracy": 0.9812206572769953,
+            "documents": 213
+          },
+          "issuer": {
+            "accuracy": 0.9061032863849765,
+            "documents": 213
+          }
+        },
+        "ORD": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 167
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 167
+          },
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 167
+          },
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 167
+          }
+        }
+      },
+      "selected_candidate_fmt": {
+        "dmy_text": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 1032
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 978
+          }
+        },
+        "iso": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 72
+          }
+        },
+        "labelled_line": {
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 468
+          }
+        },
+        "line": {
+          "issuer": {
+            "accuracy": 1.0,
+            "documents": 1759
+          }
+        },
+        "mdy_text": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 115
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 104
+          }
+        },
+        "num_dash4": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 127
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 154
+          }
+        },
+        "num_dot4": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 26
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 15
+          }
+        },
+        "num_slash2": {
+          "issue_date": {
+            "accuracy": 1.0,
+            "documents": 104
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 73
+          }
+        },
+        "num_slash4": {
+          "issue_date": {
+            "accuracy": 0.9862068965517241,
+            "documents": 145
+          },
+          "valid_to": {
+            "accuracy": 1.0,
+            "documents": 124
+          }
+        },
+        "number": {
+          "cert_no": {
+            "accuracy": 1.0,
+            "documents": 2245
+          }
+        }
+      },
+      "worst_three_layouts": [
+        {
+          "layout_id": "audited_accounts_L01",
+          "exact_match_accuracy": 0.6967509025270758,
+          "eligible_fields": 277
+        },
+        {
+          "layout_id": "other_L09",
+          "exact_match_accuracy": 0.7673611111111112,
+          "eligible_fields": 288
+        },
+        {
+          "layout_id": "lease_L00",
+          "exact_match_accuracy": 0.8444444444444444,
+          "eligible_fields": 315
+        }
+      ]
+    }
+  },
+  "grouped_cv": {
+    "date": {
+      "splitter": "GroupKFold(n_splits=5), grouped by layout_id",
+      "mean_macro_f1": 0.971714711875296,
+      "std_macro_f1": 0.01587015905991857,
+      "folds": [
+        {
+          "fold": 1,
+          "macro_f1": 0.9640462675316851,
+          "layouts": [
+            "aicte_approval_letter_L08",
+            "audited_accounts_L03",
+            "audited_accounts_L09",
+            "audited_accounts_L12",
+            "audited_accounts_L14",
+            "fire_L02",
+            "fire_L04",
+            "fire_L12",
+            "lease_L04",
+            "lease_L07",
+            "nba_letter_L03",
+            "nba_letter_L11",
+            "nba_letter_L14",
+            "occupancy_building_L06",
+            "occupancy_building_L10",
+            "occupancy_building_L15",
+            "other_L01",
+            "other_L14",
+            "structural_L00",
+            "structural_L02",
+            "structural_L07"
+          ]
+        },
+        {
+          "fold": 2,
+          "macro_f1": 0.9910580906235685,
+          "layouts": [
+            "aicte_approval_letter_L00",
+            "aicte_approval_letter_L01",
+            "audited_accounts_L06",
+            "fire_L10",
+            "fire_L11",
+            "fire_L14",
+            "lease_L02",
+            "lease_L09",
+            "lease_L11",
+            "lease_L12",
+            "nba_letter_L06",
+            "nba_letter_L08",
+            "occupancy_building_L04",
+            "occupancy_building_L07",
+            "occupancy_building_L12",
+            "other_L00",
+            "other_L12",
+            "structural_L06",
+            "structural_L11",
+            "structural_L12"
+          ]
+        },
+        {
+          "fold": 3,
+          "macro_f1": 0.9847359725511048,
+          "layouts": [
+            "aicte_approval_letter_L03",
+            "aicte_approval_letter_L04",
+            "audited_accounts_L08",
+            "audited_accounts_L10",
+            "lease_L01",
+            "lease_L06",
+            "lease_L10",
+            "lease_L14",
+            "nba_letter_L01",
+            "nba_letter_L05",
+            "nba_letter_L07",
+            "nba_letter_L09",
+            "occupancy_building_L09",
+            "occupancy_building_L11",
+            "occupancy_building_L13",
+            "other_L05",
+            "other_L07",
+            "other_L08",
+            "structural_L03",
+            "structural_L04",
+            "structural_L13"
+          ]
+        },
+        {
+          "fold": 4,
+          "macro_f1": 0.9461032409411668,
+          "layouts": [
+            "aicte_approval_letter_L07",
+            "aicte_approval_letter_L14",
+            "aicte_approval_letter_L15",
+            "audited_accounts_L00",
+            "audited_accounts_L02",
+            "audited_accounts_L05",
+            "audited_accounts_L07",
+            "fire_L00",
+            "fire_L01",
+            "fire_L03",
+            "fire_L08",
+            "lease_L13",
+            "nba_letter_L04",
+            "nba_letter_L12",
+            "nba_letter_L13",
+            "occupancy_building_L00",
+            "occupancy_building_L03",
+            "other_L06",
+            "other_L13",
+            "structural_L10",
+            "structural_L15"
+          ]
+        },
+        {
+          "fold": 5,
+          "macro_f1": 0.9726299877289543,
+          "layouts": [
+            "aicte_approval_letter_L05",
+            "aicte_approval_letter_L09",
+            "aicte_approval_letter_L10",
+            "aicte_approval_letter_L11",
+            "aicte_approval_letter_L12",
+            "audited_accounts_L11",
+            "audited_accounts_L15",
+            "fire_L07",
+            "fire_L13",
+            "fire_L15",
+            "lease_L05",
+            "lease_L15",
+            "nba_letter_L02",
+            "occupancy_building_L02",
+            "occupancy_building_L08",
+            "other_L02",
+            "other_L03",
+            "other_L10",
+            "other_L11",
+            "structural_L09",
+            "structural_L14"
+          ]
+        }
+      ]
+    },
+    "number": {
+      "splitter": "GroupKFold(n_splits=5), grouped by layout_id",
+      "mean_macro_f1": 0.997984656498469,
+      "std_macro_f1": 0.002296287144753056,
+      "folds": [
+        {
+          "fold": 1,
+          "macro_f1": 0.9998458657367155,
+          "layouts": [
+            "aicte_approval_letter_L07",
+            "aicte_approval_letter_L12",
+            "audited_accounts_L05",
+            "audited_accounts_L07",
+            "audited_accounts_L14",
+            "fire_L12",
+            "fire_L13",
+            "lease_L09",
+            "lease_L10",
+            "lease_L14",
+            "nba_letter_L08",
+            "nba_letter_L11",
+            "nba_letter_L14",
+            "occupancy_building_L00",
+            "occupancy_building_L10",
+            "occupancy_building_L13",
+            "other_L03",
+            "other_L05",
+            "structural_L00",
+            "structural_L02",
+            "structural_L07"
+          ]
+        },
+        {
+          "fold": 2,
+          "macro_f1": 0.9940974556794093,
+          "layouts": [
+            "aicte_approval_letter_L03",
+            "aicte_approval_letter_L14",
+            "aicte_approval_letter_L15",
+            "audited_accounts_L00",
+            "audited_accounts_L09",
+            "audited_accounts_L10",
+            "fire_L01",
+            "fire_L10",
+            "fire_L15",
+            "lease_L02",
+            "lease_L04",
+            "lease_L13",
+            "lease_L15",
+            "nba_letter_L02",
+            "nba_letter_L07",
+            "nba_letter_L13",
+            "occupancy_building_L08",
+            "occupancy_building_L09",
+            "other_L07",
+            "other_L08",
+            "structural_L09"
+          ]
+        },
+        {
+          "fold": 3,
+          "macro_f1": 0.9993553700612131,
+          "layouts": [
+            "aicte_approval_letter_L05",
+            "aicte_approval_letter_L11",
+            "audited_accounts_L06",
+            "fire_L08",
+            "fire_L11",
+            "fire_L14",
+            "lease_L05",
+            "lease_L06",
+            "lease_L07",
+            "lease_L11",
+            "lease_L12",
+            "nba_letter_L01",
+            "nba_letter_L03",
+            "nba_letter_L04",
+            "nba_letter_L12",
+            "occupancy_building_L07",
+            "occupancy_building_L11",
+            "occupancy_building_L15",
+            "other_L02",
+            "other_L10"
+          ]
+        },
+        {
+          "fold": 4,
+          "macro_f1": 1.0,
+          "layouts": [
+            "aicte_approval_letter_L04",
+            "aicte_approval_letter_L08",
+            "aicte_approval_letter_L10",
+            "audited_accounts_L03",
+            "audited_accounts_L11",
+            "fire_L03",
+            "fire_L07",
+            "lease_L01",
+            "occupancy_building_L03",
+            "occupancy_building_L04",
+            "occupancy_building_L06",
+            "occupancy_building_L12",
+            "other_L00",
+            "other_L01",
+            "other_L06",
+            "other_L12",
+            "other_L14",
+            "structural_L04",
+            "structural_L11",
+            "structural_L13",
+            "structural_L14"
+          ]
+        },
+        {
+          "fold": 5,
+          "macro_f1": 0.9966245910150071,
+          "layouts": [
+            "aicte_approval_letter_L00",
+            "aicte_approval_letter_L01",
+            "aicte_approval_letter_L09",
+            "audited_accounts_L02",
+            "audited_accounts_L08",
+            "audited_accounts_L12",
+            "audited_accounts_L15",
+            "fire_L00",
+            "fire_L02",
+            "fire_L04",
+            "nba_letter_L05",
+            "nba_letter_L06",
+            "nba_letter_L09",
+            "occupancy_building_L02",
+            "other_L11",
+            "other_L13",
+            "structural_L03",
+            "structural_L06",
+            "structural_L10",
+            "structural_L12",
+            "structural_L15"
+          ]
+        }
+      ]
+    },
+    "issuer": {
+      "splitter": "GroupKFold(n_splits=5), grouped by layout_id",
+      "mean_macro_f1": 0.9979765652218384,
+      "std_macro_f1": 0.0023232645212745277,
+      "folds": [
+        {
+          "fold": 1,
+          "macro_f1": 0.9933984035917878,
+          "layouts": [
+            "aicte_approval_letter_L04",
+            "audited_accounts_L00",
+            "audited_accounts_L08",
+            "lease_L01",
+            "lease_L11",
+            "lease_L15",
+            "nba_letter_L01",
+            "nba_letter_L02",
+            "nba_letter_L06",
+            "occupancy_building_L06",
+            "occupancy_building_L08",
+            "occupancy_building_L10",
+            "other_L00",
+            "other_L05",
+            "other_L08",
+            "other_L14",
+            "structural_L00",
+            "structural_L09",
+            "structural_L10",
+            "structural_L13"
+          ]
+        },
+        {
+          "fold": 2,
+          "macro_f1": 0.9991828260513828,
+          "layouts": [
+            "aicte_approval_letter_L01",
+            "aicte_approval_letter_L08",
+            "aicte_approval_letter_L12",
+            "audited_accounts_L05",
+            "audited_accounts_L09",
+            "fire_L01",
+            "fire_L02",
+            "fire_L03",
+            "fire_L08",
+            "fire_L13",
+            "lease_L07",
+            "lease_L13",
+            "nba_letter_L04",
+            "nba_letter_L14",
+            "occupancy_building_L04",
+            "occupancy_building_L11",
+            "other_L02",
+            "other_L07",
+            "structural_L06",
+            "structural_L07",
+            "structural_L15"
+          ]
+        },
+        {
+          "fold": 3,
+          "macro_f1": 0.9997365406643757,
+          "layouts": [
+            "aicte_approval_letter_L15",
+            "audited_accounts_L02",
+            "audited_accounts_L03",
+            "audited_accounts_L06",
+            "audited_accounts_L10",
+            "audited_accounts_L12",
+            "fire_L00",
+            "fire_L07",
+            "lease_L05",
+            "lease_L06",
+            "lease_L14",
+            "nba_letter_L05",
+            "nba_letter_L08",
+            "nba_letter_L12",
+            "occupancy_building_L00",
+            "other_L03",
+            "other_L10",
+            "other_L11",
+            "other_L13",
+            "structural_L02",
+            "structural_L12"
+          ]
+        },
+        {
+          "fold": 4,
+          "macro_f1": 0.9984854623852064,
+          "layouts": [
+            "aicte_approval_letter_L00",
+            "aicte_approval_letter_L07",
+            "aicte_approval_letter_L10",
+            "aicte_approval_letter_L11",
+            "aicte_approval_letter_L14",
+            "audited_accounts_L07",
+            "audited_accounts_L11",
+            "audited_accounts_L14",
+            "fire_L14",
+            "fire_L15",
+            "lease_L04",
+            "nba_letter_L09",
+            "nba_letter_L13",
+            "occupancy_building_L07",
+            "occupancy_building_L09",
+            "occupancy_building_L12",
+            "occupancy_building_L13",
+            "occupancy_building_L15",
+            "other_L06",
+            "structural_L04",
+            "structural_L14"
+          ]
+        },
+        {
+          "fold": 5,
+          "macro_f1": 0.9990795934164398,
+          "layouts": [
+            "aicte_approval_letter_L03",
+            "aicte_approval_letter_L05",
+            "aicte_approval_letter_L09",
+            "audited_accounts_L15",
+            "fire_L04",
+            "fire_L10",
+            "fire_L11",
+            "fire_L12",
+            "lease_L02",
+            "lease_L09",
+            "lease_L10",
+            "lease_L12",
+            "nba_letter_L03",
+            "nba_letter_L07",
+            "nba_letter_L11",
+            "occupancy_building_L02",
+            "occupancy_building_L03",
+            "other_L01",
+            "other_L12",
+            "structural_L03",
+            "structural_L11"
+          ]
+        }
+      ]
+    }
+  },
+  "ablations": {
+    "drop_ctx_above": {
+      "field_exact_match": {
+        "issue_date": 0.825951016154247,
+        "valid_to": 0.9152435167615434,
+        "cert_no": 0.9995557529986673,
+        "issuer": 0.976010661928032
+      },
+      "delta_vs_baseline": {
+        "issue_date": -0.017717561229807166,
+        "valid_to": -0.0006325110689436864,
+        "cert_no": 0.002221235006663713,
+        "issuer": -0.01332741003998228
+      }
+    },
+    "drop_doc_type": {
+      "field_exact_match": {
+        "issue_date": 0.8869202709744659,
+        "valid_to": 0.9108159392789373,
+        "cert_no": 0.9960017769880053,
+        "issuer": 0.9857840959573523
+      },
+      "delta_vs_baseline": {
+        "issue_date": 0.0432516935904117,
+        "valid_to": -0.005060088551549713,
+        "cert_no": -0.0013327410039982723,
+        "issuer": -0.0035539760106619855
+      }
+    },
+    "drop_position": {
+      "field_exact_match": {
+        "issue_date": 0.7535174570088587,
+        "valid_to": 0.9114484503478811,
+        "cert_no": 0.9942247889826744,
+        "issuer": 1.0
+      },
+      "delta_vs_baseline": {
+        "issue_date": -0.09015112037519546,
+        "valid_to": -0.0044275774826059155,
+        "cert_no": -0.003109729009329154,
+        "issuer": 0.010661928031985735
+      }
+    },
+    "drop_date_extrema": {
+      "field_exact_match": {
+        "issue_date": 0.6956748306409588,
+        "valid_to": 0.7381404174573055,
+        "cert_no": 0.9973345179920036,
+        "issuer": 0.9893380719680143
+      },
+      "delta_vs_baseline": {
+        "issue_date": -0.1479937467430954,
+        "valid_to": -0.17773561037318153,
+        "cert_no": 0.0,
+        "issuer": 0.0
+      }
+    }
+  },
+  "stress_tests": {
+    "sample_documents": 120,
+    "baseline": {
+      "issue_date": 0.73,
+      "valid_to": 0.9285714285714286,
+      "cert_no": 1.0,
+      "issuer": 1.0
+    },
+    "shuffle_word_order": {
+      "mutations": {
+        "word_order_shuffled": true,
+        "word_count": 14243
+      },
+      "field_exact_match": {
+        "issue_date": 0.73,
+        "valid_to": 0.9285714285714286,
+        "cert_no": 1.0,
+        "issuer": 1.0
+      },
+      "delta_vs_baseline": {
+        "issue_date": 0.0,
+        "valid_to": 0.0,
+        "cert_no": 0.0,
+        "issuer": 0.0
+      }
+    },
+    "remove_punctuation": {
+      "mutations": {
+        "word_texts_changed_or_removed": 3203
+      },
+      "field_exact_match": {
+        "issue_date": 0.35,
+        "valid_to": 0.38095238095238093,
+        "cert_no": 0.10833333333333334,
+        "issuer": 0.3333333333333333
+      },
+      "delta_vs_baseline": {
+        "issue_date": -0.38,
+        "valid_to": -0.5476190476190477,
+        "cert_no": -0.8916666666666666,
+        "issuer": -0.6666666666666667
+      }
+    },
+    "add_stray_tokens": {
+      "mutations": {
+        "stray_tokens_added": 950
+      },
+      "field_exact_match": {
+        "issue_date": 0.71,
+        "valid_to": 0.9047619047619048,
+        "cert_no": 1.0,
+        "issuer": 0.7916666666666666
+      },
+      "delta_vs_baseline": {
+        "issue_date": -0.020000000000000018,
+        "valid_to": -0.023809523809523836,
+        "cert_no": 0.0,
+        "issuer": -0.20833333333333337
+      }
+    },
+    "drop_label_words": {
+      "mutations": {
+        "label_words_before": 90,
+        "label_words_removed": 4,
+        "removed_fraction": 0.044444444444444446
+      },
+      "field_exact_match": {
+        "issue_date": 0.73,
+        "valid_to": 0.9285714285714286,
+        "cert_no": 1.0,
+        "issuer": 1.0
+      },
+      "delta_vs_baseline": {
+        "issue_date": 0.0,
+        "valid_to": 0.0,
+        "cert_no": 0.0,
+        "issuer": 0.0
+      }
+    },
+    "lower_ocr_conf": {
+      "mutations": {
+        "ocr_words_lowered": 14243
+      },
+      "field_exact_match": {
+        "issue_date": 0.73,
+        "valid_to": 0.9285714285714286,
+        "cert_no": 1.0,
+        "issuer": 1.0
+      },
+      "delta_vs_baseline": {
+        "issue_date": 0.0,
+        "valid_to": 0.0,
+        "cert_no": 0.0,
+        "issuer": 0.0
+      }
+    },
+    "split_pages": {
+      "mutations": {
+        "documents_split_over_pages": 120
+      },
+      "field_exact_match": {
+        "issue_date": 0.05,
+        "valid_to": 0.0,
+        "cert_no": 0.625,
+        "issuer": 0.0
+      },
+      "delta_vs_baseline": {
+        "issue_date": -0.6799999999999999,
+        "valid_to": -0.9285714285714286,
+        "cert_no": -0.375,
+        "issuer": -1.0
+      }
+    },
+    "rewrite_label_synonym": {
+      "mutations": {
+        "label_tokens_rewritten": 159
+      },
+      "field_exact_match": {
+        "issue_date": 0.73,
+        "valid_to": 0.7857142857142857,
+        "cert_no": 1.0,
+        "issuer": 0.7666666666666667
+      },
+      "delta_vs_baseline": {
+        "issue_date": 0.0,
+        "valid_to": -0.1428571428571429,
+        "cert_no": 0.0,
+        "issuer": -0.23333333333333328
+      }
+    }
+  },
+  "sample_documents": {
+    "sample_lease.pdf": {
+      "supported": true,
+      "model_available": true,
+      "warnings": [],
+      "fields": {
+        "issue_date": {
+          "value": "2023-02-06",
+          "display": "6 Feb 2023",
+          "confidence": 0.9999072277907142,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "valid_to": {
+          "value": "2038-02-05",
+          "display": "5 Feb 2038",
+          "confidence": 0.9998348308665831,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "cert_no": {
+          "value": "SR/2023/12842",
+          "display": "SR/2023/12842",
+          "confidence": 0.999999904910375,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "issuer": {
+          "value": "Office of the Sub-Registrar",
+          "display": "Office of the Sub-Registrar",
+          "confidence": 0.9999999983908148,
+          "zone": "green",
+          "blank_reason": ""
+        }
+      }
+    },
+    "sample_fire.pdf": {
+      "supported": true,
+      "model_available": true,
+      "warnings": [],
+      "fields": {
+        "issue_date": {
+          "value": "2022-09-12",
+          "display": "12-Sep-2022",
+          "confidence": 0.89,
+          "zone": "amber",
+          "blank_reason": ""
+        },
+        "valid_to": {
+          "value": "2025-09-11",
+          "display": "11-Sep-2025",
+          "confidence": 0.9998678770374201,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "cert_no": {
+          "value": "FNOC/2022/96875",
+          "display": "FNOC/2022/96875",
+          "confidence": 0.9999999999905873,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "issuer": {
+          "value": "Fire and Rescue Services Department",
+          "display": "Fire and Rescue Services Department",
+          "confidence": 0.9999998591591602,
+          "zone": "green",
+          "blank_reason": ""
+        }
+      }
+    },
+    "sample_audited_accounts.pdf": {
+      "supported": true,
+      "model_available": true,
+      "warnings": [],
+      "fields": {
+        "issue_date": {
+          "value": "",
+          "display": "",
+          "confidence": 0.0,
+          "zone": "red",
+          "blank_reason": "ambiguous_date"
+        },
+        "valid_to": {
+          "value": "",
+          "display": "",
+          "confidence": 0.0,
+          "zone": "red",
+          "blank_reason": "ambiguous_date"
+        },
+        "cert_no": {
+          "value": "CA/2025/27382",
+          "display": "CA/2025/27382",
+          "confidence": 0.9999999868281346,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "issuer": {
+          "value": "Naidu Associates Chartered Accountants",
+          "display": "Naidu Associates Chartered Accountants",
+          "confidence": 0.9999999999999345,
+          "zone": "green",
+          "blank_reason": ""
+        }
+      }
+    },
+    "sample_aicte_approval_letter.pdf": {
+      "supported": true,
+      "model_available": true,
+      "warnings": [],
+      "fields": {
+        "issue_date": {
+          "value": "2023-08-31",
+          "display": "31 Aug 2023",
+          "confidence": 0.9998111859656071,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "valid_to": {
+          "value": "2025-08-30",
+          "display": "30 Aug 2025",
+          "confidence": 0.9902680750669414,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "cert_no": {
+          "value": "R2/AICTE/23/53483",
+          "display": "R2/AICTE/23/53483",
+          "confidence": 0.9999999801615829,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "issuer": {
+          "value": "AICTE Regional Office, Northern Region",
+          "display": "AICTE Regional Office, Northern Region",
+          "confidence": 0.99999999999727,
+          "zone": "green",
+          "blank_reason": ""
+        }
+      }
+    },
+    "scan_fire.png": {
+      "supported": true,
+      "model_available": true,
+      "warnings": [],
+      "fields": {
+        "issue_date": {
+          "value": "2022-09-12",
+          "display": "12-Sep-2022",
+          "confidence": 0.89,
+          "zone": "amber",
+          "blank_reason": ""
+        },
+        "valid_to": {
+          "value": "2025-09-11",
+          "display": "11-Sep-2025",
+          "confidence": 0.999866424504582,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "cert_no": {
+          "value": "FNOC/2022/96875",
+          "display": "FNOC/2022/96875",
+          "confidence": 0.9999999999826075,
+          "zone": "green",
+          "blank_reason": ""
+        },
+        "issuer": {
+          "value": "Fire and Rescue _ Services Department",
+          "display": "Fire and Rescue _ Services Department",
+          "confidence": 0.9999987362260795,
+          "zone": "green",
+          "blank_reason": ""
+        }
+      }
+    }
+  },
+  "evaluation_protocol_note": "The held-out test metrics were inspected during iterative debugging of inference safeguards and evaluation logic. Treat the reported scores as diagnostic, not as a blind one-shot estimate; use a fresh holdout for independent performance claims."
+}

@@ -1,0 +1,5 @@
+pymupdf>=1.24
+pytesseract>=0.3.10
+pillow>=10
+opencv-python-headless>=4.9
+numpy

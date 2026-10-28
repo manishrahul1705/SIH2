@@ -1,0 +1,92 @@
+{
+  "01_start_end_dates.pdf": {
+    "expected_start": "2016-10-16",
+    "expected_end": "2027-11-15",
+    "expected_term_months": 133,
+    "expected_state": "derived",
+    "expected_status_as_of_2026-10-27": "live",
+    "n_pages": 12,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "02_start_and_term_derive_end.pdf": {
+    "expected_start": "2025-08-20",
+    "expected_end": "2026-11-19",
+    "expected_term_months": 15,
+    "expected_state": "derived",
+    "expected_status_as_of_2026-10-27": "expires_soon",
+    "n_pages": 5,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "03_all_three_consistent.pdf": {
+    "expected_start": "2015-06-26",
+    "expected_end": "2023-04-25",
+    "expected_term_months": 94,
+    "expected_state": "ok",
+    "expected_status_as_of_2026-10-27": "expired",
+    "n_pages": 8,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "04_stated_end_disagrees_with_term.pdf": {
+    "expected_start": "2023-10-29",
+    "expected_end": "2028-09-16",
+    "expected_term_months": 60,
+    "expected_state": "inconsistent",
+    "expected_status_as_of_2026-10-27": "inconsistent",
+    "n_pages": 5,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "05_ambiguous_numeric_date.pdf": {
+    "expected_start": "NONE",
+    "expected_end": "NONE",
+    "expected_term_months": 168,
+    "expected_state": "needs_review",
+    "expected_status_as_of_2026-10-27": "needs_review",
+    "n_pages": 12,
+    "start_ambiguous": true,
+    "end_ambiguous": true
+  },
+  "06_long_deed_key_clause_late.pdf": {
+    "expected_start": "2028-10-30",
+    "expected_end": "2030-01-29",
+    "expected_term_months": 15,
+    "expected_state": "ok",
+    "expected_status_as_of_2026-10-27": "not_started",
+    "n_pages": 10,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "07_expires_soon.pdf": {
+    "expected_start": "2025-12-19",
+    "expected_end": "2026-11-18",
+    "expected_term_months": 11,
+    "expected_state": "derived",
+    "expected_status_as_of_2026-10-27": "expires_soon",
+    "n_pages": 8,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "08_term_only_words.pdf": {
+    "expected_start": "2026-08-13",
+    "expected_end": "2027-08-12",
+    "expected_term_months": 12,
+    "expected_state": "derived",
+    "expected_status_as_of_2026-10-27": "live",
+    "n_pages": 5,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  },
+  "09_scanned_image.png": {
+    "expected_start": "2026-03-12",
+    "expected_end": "2035-03-11",
+    "expected_term_months": 108,
+    "expected_state": "derived",
+    "expected_status_as_of_2026-10-27": "live",
+    "n_pages": 1,
+    "start_ambiguous": false,
+    "end_ambiguous": false
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "stats": {
+    "rows_documents_train": 5000,
+    "rows_candidates_train": 85504,
+    "rows_pages_train": 32714,
+    "rows_documents_val": 1500,
+    "rows_candidates_val": 21746,
+    "rows_pages_val": 9836,
+    "rows_documents_test": 1500,
+    "rows_candidates_test": 24760,
+    "rows_pages_test": 9728,
+    "docs_train": 5000,
+    "docs_val": 1500,
+    "docs_test": 1500,
+    "layouts_train": 10,
+    "layouts_val": 3,
+    "layouts_test": 3,
+    "candidates_checked": 132010,
+    "docs_checked": 8000
+  },
+  "first_errors": []
+}

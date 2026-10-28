@@ -1,0 +1,1507 @@
+{
+  "model_version": "m3-1.0.0",
+  "test_documents": 1500,
+  "test_layouts": 3,
+  "candidate_class_macro_f1": 0.996134172436447,
+  "field_exact_match": {
+    "lease_start": {
+      "documents_with_field": 1189,
+      "exact_match_count": 1189,
+      "exact_match_accuracy": 1.0
+    },
+    "lease_end": {
+      "documents_with_field": 1213,
+      "exact_match_count": 1213,
+      "exact_match_accuracy": 1.0
+    },
+    "term_value": {
+      "documents_with_field": 1423,
+      "exact_match_count": 1423,
+      "exact_match_accuracy": 1.0
+    }
+  },
+  "field_exact_match_layout_document_bootstrap_95_ci": {
+    "expected_start": {
+      "lower_95": 1.0,
+      "upper_95": 1.0,
+      "replicates": 500
+    },
+    "expected_end": {
+      "lower_95": 1.0,
+      "upper_95": 1.0,
+      "replicates": 500
+    },
+    "expected_term_months": {
+      "lower_95": 1.0,
+      "upper_95": 1.0,
+      "replicates": 500
+    }
+  },
+  "field_span_f1": {
+    "lease_start": {
+      "true_positive_spans": 1189,
+      "false_positive_spans": 0,
+      "false_negative_spans": 0,
+      "span_precision": 1.0,
+      "span_recall": 1.0,
+      "span_f1": 1.0,
+      "span_definition": "one answer span per document; exact page/character span match against any non-ambiguous role-labeled copy, so repeated schedule copies are equivalent"
+    },
+    "lease_end": {
+      "true_positive_spans": 932,
+      "false_positive_spans": 0,
+      "false_negative_spans": 0,
+      "span_precision": 1.0,
+      "span_recall": 1.0,
+      "span_f1": 1.0,
+      "span_definition": "one answer span per document; exact page/character span match against any non-ambiguous role-labeled copy, so repeated schedule copies are equivalent"
+    },
+    "term_value": {
+      "true_positive_spans": 1128,
+      "false_positive_spans": 0,
+      "false_negative_spans": 0,
+      "span_precision": 1.0,
+      "span_recall": 1.0,
+      "span_f1": 1.0,
+      "span_definition": "one answer span per document; exact page/character span match against any non-ambiguous role-labeled copy, so repeated schedule copies are equivalent"
+    }
+  },
+  "field_span_f1_layout_document_bootstrap_95_ci": {
+    "lease_start": {
+      "lower_95": 1.0,
+      "upper_95": 1.0,
+      "replicates": 500
+    },
+    "lease_end": {
+      "lower_95": 1.0,
+      "upper_95": 1.0,
+      "replicates": 500
+    },
+    "term_value": {
+      "lower_95": 1.0,
+      "upper_95": 1.0,
+      "replicates": 500
+    }
+  },
+  "end_to_end_accuracy": {
+    "expected_start": {
+      "correct": 1500,
+      "total": 1500,
+      "accuracy": 1.0
+    },
+    "expected_end": {
+      "correct": 1500,
+      "total": 1500,
+      "accuracy": 1.0
+    },
+    "expected_term_months": {
+      "correct": 1500,
+      "total": 1500,
+      "accuracy": 1.0
+    },
+    "expected_state": {
+      "correct": 1500,
+      "total": 1500,
+      "accuracy": 1.0
+    },
+    "expected_status": {
+      "correct": 1500,
+      "total": 1500,
+      "accuracy": 1.0
+    }
+  },
+  "derived_value_accuracy": {
+    "scenario_B_end_from_term": {
+      "documents": 359,
+      "accuracy": 1.0
+    },
+    "scenario_A_term_from_dates": {
+      "documents": 372,
+      "accuracy": 1.0
+    }
+  },
+  "inconsistency_detection": {
+    "scenario_D_documents": 230,
+    "true_positive": 178,
+    "recall": 0.7739130434782608,
+    "non_D_documents": 1270,
+    "false_positive": 0,
+    "false_alarm_rate": 0.0,
+    "expected_inconsistent_documents": 178,
+    "expected_inconsistent_recall": 1.0,
+    "scenario_D_needs_review_due_to_ambiguity": 52
+  },
+  "false_fill_rate": {
+    "scenario_A_term_absent": {
+      "documents": 372,
+      "false_filled": 0,
+      "rate": 0.0
+    },
+    "scenario_B_stated_end_absent": {
+      "documents": 359,
+      "false_filled": 0,
+      "rate": 0.0
+    }
+  },
+  "ambiguous_date_blank_rate": {
+    "lease_start": {
+      "ambiguous_documents": 311,
+      "blanked": 311,
+      "blank_rate": 1.0
+    },
+    "lease_end": {
+      "ambiguous_documents": 209,
+      "blanked": 209,
+      "blank_rate": 1.0
+    }
+  },
+  "calibration": {
+    "lease_start": {
+      "ece": 0.017038856181665278,
+      "reliability": [
+        {
+          "bin": "0.7-0.8",
+          "count": 2,
+          "mean_confidence": 0.769,
+          "accuracy": 1.0
+        },
+        {
+          "bin": "0.8-0.9",
+          "count": 179,
+          "mean_confidence": 0.89,
+          "accuracy": 1.0
+        },
+        {
+          "bin": "0.9-1.0",
+          "count": 1008,
+          "mean_confidence": 0.9998936507936508,
+          "accuracy": 1.0
+        }
+      ],
+      "zone_accuracy_and_coverage": {
+        "green": {
+          "count": 1008,
+          "coverage": 0.847771236333053,
+          "accuracy": 1.0
+        },
+        "amber": {
+          "count": 181,
+          "coverage": 0.15222876366694701,
+          "accuracy": 1.0
+        },
+        "red": {
+          "count": 0,
+          "coverage": 0.0,
+          "accuracy": 0.0
+        }
+      }
+    },
+    "lease_end": {
+      "ece": 0.041734212695795456,
+      "reliability": [
+        {
+          "bin": "0.7-0.8",
+          "count": 1,
+          "mean_confidence": 0.759,
+          "accuracy": 1.0
+        },
+        {
+          "bin": "0.8-0.9",
+          "count": 458,
+          "mean_confidence": 0.8900000000000002,
+          "accuracy": 1.0
+        },
+        {
+          "bin": "0.9-1.0",
+          "count": 754,
+          "mean_confidence": 0.9999965517241379,
+          "accuracy": 1.0
+        }
+      ],
+      "zone_accuracy_and_coverage": {
+        "green": {
+          "count": 754,
+          "coverage": 0.6215993404781534,
+          "accuracy": 1.0
+        },
+        "amber": {
+          "count": 459,
+          "coverage": 0.37840065952184665,
+          "accuracy": 1.0
+        },
+        "red": {
+          "count": 0,
+          "coverage": 0.0,
+          "accuracy": 0.0
+        }
+      }
+    },
+    "term_value": {
+      "ece": 0.036729725931131336,
+      "reliability": [
+        {
+          "bin": "0.8-0.9",
+          "count": 475,
+          "mean_confidence": 0.8900000000000002,
+          "accuracy": 1.0
+        },
+        {
+          "bin": "0.9-1.0",
+          "count": 948,
+          "mean_confidence": 0.9999827004219409,
+          "accuracy": 1.0
+        }
+      ],
+      "zone_accuracy_and_coverage": {
+        "green": {
+          "count": 948,
+          "coverage": 0.6661981728742095,
+          "accuracy": 1.0
+        },
+        "amber": {
+          "count": 475,
+          "coverage": 0.3338018271257906,
+          "accuracy": 1.0
+        },
+        "red": {
+          "count": 0,
+          "coverage": 0.0,
+          "accuracy": 0.0
+        }
+      }
+    }
+  },
+  "breakdowns": {
+    "lease_start": {
+      "layout_id": {
+        "3": {
+          "documents": 500,
+          "accuracy": 1.0
+        },
+        "5": {
+          "documents": 500,
+          "accuracy": 1.0
+        },
+        "8": {
+          "documents": 500,
+          "accuracy": 1.0
+        }
+      },
+      "n_pages": {
+        "8": {
+          "documents": 110,
+          "accuracy": 1.0
+        },
+        "6": {
+          "documents": 181,
+          "accuracy": 1.0
+        },
+        "4": {
+          "documents": 231,
+          "accuracy": 1.0
+        },
+        "9": {
+          "documents": 108,
+          "accuracy": 1.0
+        },
+        "5": {
+          "documents": 226,
+          "accuracy": 1.0
+        },
+        "7": {
+          "documents": 138,
+          "accuracy": 1.0
+        },
+        "3": {
+          "documents": 219,
+          "accuracy": 1.0
+        },
+        "10": {
+          "documents": 109,
+          "accuracy": 1.0
+        },
+        "12": {
+          "documents": 65,
+          "accuracy": 1.0
+        },
+        "11": {
+          "documents": 113,
+          "accuracy": 1.0
+        }
+      },
+      "scenario": {
+        "B": {
+          "documents": 359,
+          "accuracy": 1.0
+        },
+        "A": {
+          "documents": 372,
+          "accuracy": 1.0
+        },
+        "C": {
+          "documents": 539,
+          "accuracy": 1.0
+        },
+        "D": {
+          "documents": 230,
+          "accuracy": 1.0
+        }
+      },
+      "term_style": {
+        "w": {
+          "documents": 335,
+          "accuracy": 1.0
+        },
+        "q": {
+          "documents": 232,
+          "accuracy": 1.0
+        },
+        "NONE": {
+          "documents": 372,
+          "accuracy": 1.0
+        },
+        "d": {
+          "documents": 345,
+          "accuracy": 1.0
+        },
+        "p": {
+          "documents": 216,
+          "accuracy": 1.0
+        }
+      }
+    },
+    "lease_end": {
+      "layout_id": {
+        "3": {
+          "documents": 500,
+          "accuracy": 1.0
+        },
+        "5": {
+          "documents": 500,
+          "accuracy": 1.0
+        },
+        "8": {
+          "documents": 500,
+          "accuracy": 1.0
+        }
+      },
+      "n_pages": {
+        "8": {
+          "documents": 110,
+          "accuracy": 1.0
+        },
+        "6": {
+          "documents": 181,
+          "accuracy": 1.0
+        },
+        "4": {
+          "documents": 231,
+          "accuracy": 1.0
+        },
+        "9": {
+          "documents": 108,
+          "accuracy": 1.0
+        },
+        "5": {
+          "documents": 226,
+          "accuracy": 1.0
+        },
+        "7": {
+          "documents": 138,
+          "accuracy": 1.0
+        },
+        "3": {
+          "documents": 219,
+          "accuracy": 1.0
+        },
+        "10": {
+          "documents": 109,
+          "accuracy": 1.0
+        },
+        "12": {
+          "documents": 65,
+          "accuracy": 1.0
+        },
+        "11": {
+          "documents": 113,
+          "accuracy": 1.0
+        }
+      },
+      "scenario": {
+        "B": {
+          "documents": 359,
+          "accuracy": 1.0
+        },
+        "A": {
+          "documents": 372,
+          "accuracy": 1.0
+        },
+        "C": {
+          "documents": 539,
+          "accuracy": 1.0
+        },
+        "D": {
+          "documents": 230,
+          "accuracy": 1.0
+        }
+      },
+      "term_style": {
+        "w": {
+          "documents": 335,
+          "accuracy": 1.0
+        },
+        "q": {
+          "documents": 232,
+          "accuracy": 1.0
+        },
+        "NONE": {
+          "documents": 372,
+          "accuracy": 1.0
+        },
+        "d": {
+          "documents": 345,
+          "accuracy": 1.0
+        },
+        "p": {
+          "documents": 216,
+          "accuracy": 1.0
+        }
+      }
+    },
+    "term_value": {
+      "layout_id": {
+        "3": {
+          "documents": 500,
+          "accuracy": 1.0
+        },
+        "5": {
+          "documents": 500,
+          "accuracy": 1.0
+        },
+        "8": {
+          "documents": 500,
+          "accuracy": 1.0
+        }
+      },
+      "n_pages": {
+        "8": {
+          "documents": 110,
+          "accuracy": 1.0
+        },
+        "6": {
+          "documents": 181,
+          "accuracy": 1.0
+        },
+        "4": {
+          "documents": 231,
+          "accuracy": 1.0
+        },
+        "9": {
+          "documents": 108,
+          "accuracy": 1.0
+        },
+        "5": {
+          "documents": 226,
+          "accuracy": 1.0
+        },
+        "7": {
+          "documents": 138,
+          "accuracy": 1.0
+        },
+        "3": {
+          "documents": 219,
+          "accuracy": 1.0
+        },
+        "10": {
+          "documents": 109,
+          "accuracy": 1.0
+        },
+        "12": {
+          "documents": 65,
+          "accuracy": 1.0
+        },
+        "11": {
+          "documents": 113,
+          "accuracy": 1.0
+        }
+      },
+      "scenario": {
+        "B": {
+          "documents": 359,
+          "accuracy": 1.0
+        },
+        "A": {
+          "documents": 372,
+          "accuracy": 1.0
+        },
+        "C": {
+          "documents": 539,
+          "accuracy": 1.0
+        },
+        "D": {
+          "documents": 230,
+          "accuracy": 1.0
+        }
+      },
+      "term_style": {
+        "w": {
+          "documents": 335,
+          "accuracy": 1.0
+        },
+        "q": {
+          "documents": 232,
+          "accuracy": 1.0
+        },
+        "NONE": {
+          "documents": 372,
+          "accuracy": 1.0
+        },
+        "d": {
+          "documents": 345,
+          "accuracy": 1.0
+        },
+        "p": {
+          "documents": 216,
+          "accuracy": 1.0
+        }
+      }
+    }
+  },
+  "layout_scores": [
+    {
+      "layout_id": 3,
+      "documents": 500,
+      "end_to_end_accuracy": 1.0
+    },
+    {
+      "layout_id": 5,
+      "documents": 500,
+      "end_to_end_accuracy": 1.0
+    },
+    {
+      "layout_id": 8,
+      "documents": 500,
+      "end_to_end_accuracy": 1.0
+    }
+  ],
+  "worst_three_layouts": [
+    {
+      "layout_id": 3,
+      "documents": 500,
+      "end_to_end_accuracy": 1.0
+    },
+    {
+      "layout_id": 5,
+      "documents": 500,
+      "end_to_end_accuracy": 1.0
+    },
+    {
+      "layout_id": 8,
+      "documents": 500,
+      "end_to_end_accuracy": 1.0
+    }
+  ],
+  "blank_reason_counts": {
+    "low_confidence": 728,
+    "ambiguous_date": 520,
+    "not_found": 3
+  },
+  "wrong_candidate_examples": {
+    "lease_start": [],
+    "lease_end": [],
+    "term_value": []
+  },
+  "end_to_end_mismatch_examples": [],
+  "deterministic_checks_off": {
+    "expected_start": {
+      "correct": 1270,
+      "total": 1500,
+      "accuracy": 0.8466666666666667
+    },
+    "expected_end": {
+      "correct": 1195,
+      "total": 1500,
+      "accuracy": 0.7966666666666666
+    },
+    "expected_term_months": {
+      "correct": 1131,
+      "total": 1500,
+      "accuracy": 0.754
+    },
+    "expected_state": {
+      "correct": 927,
+      "total": 1500,
+      "accuracy": 0.618
+    },
+    "expected_status": {
+      "correct": 927,
+      "total": 1500,
+      "accuracy": 0.618
+    }
+  },
+  "five_fold_grouped_cv": {
+    "training_only": true,
+    "metrics": {
+      "LogisticRegression": 0.9933493583166569,
+      "HistGradientBoostingClassifier": 0.8445912153141807
+    },
+    "sampled_candidates_per_layout_role_max": 400
+  },
+  "ablations": {
+    "no_context": {
+      "candidate_macro_f1": 0.5129371265195564,
+      "drop_from_full_test": 0.4831970459168906
+    },
+    "no_numeric": {
+      "candidate_macro_f1": 0.9964615164147507,
+      "drop_from_full_test": -0.00032734397830369577
+    },
+    "no_position": {
+      "candidate_macro_f1": 0.9966311907126919,
+      "drop_from_full_test": -0.0004970182762449316
+    }
+  },
+  "stress_tests": {
+    "extra_ocr_noise": {
+      "documents": 99,
+      "field_accuracy": {
+        "lease_start": {
+          "correct": 81,
+          "total": 81,
+          "accuracy": 1.0
+        },
+        "lease_end": {
+          "correct": 84,
+          "total": 84,
+          "accuracy": 1.0
+        },
+        "term_value": {
+          "correct": 95,
+          "total": 95,
+          "accuracy": 1.0
+        }
+      },
+      "blank_reason_counts": {
+        "lease_end:low_confidence": 27,
+        "lease_start:ambiguous_date": 18,
+        "term_value:low_confidence": 22,
+        "lease_end:ambiguous_date": 11
+      },
+      "wrong_candidate_examples": {
+        "lease_start": [],
+        "lease_end": [],
+        "term_value": []
+      }
+    },
+    "shuffled_clause_order": {
+      "documents": 99,
+      "field_accuracy": {
+        "lease_start": {
+          "correct": 67,
+          "total": 81,
+          "accuracy": 0.8271604938271605
+        },
+        "lease_end": {
+          "correct": 70,
+          "total": 84,
+          "accuracy": 0.8333333333333334
+        },
+        "term_value": {
+          "correct": 75,
+          "total": 95,
+          "accuracy": 0.7894736842105263
+        }
+      },
+      "blank_reason_counts": {
+        "lease_end:low_confidence": 42,
+        "lease_start:ambiguous_date": 17,
+        "term_value:low_confidence": 15,
+        "lease_start:low_confidence": 12,
+        "lease_end:ambiguous_date": 7
+      },
+      "wrong_candidate_examples": {
+        "lease_start": [
+          {
+            "doc_id": "L03-0003",
+            "expected": "2029-05-13",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0009",
+            "expected": "2006-11-06",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0010",
+            "expected": "2025-11-28",
+            "actual": "2018-03-06",
+            "candidate_id": "c001",
+            "candidate_text": "6 March 2018",
+            "candidate_value": "2018-03-06",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0013",
+            "expected": "2021-11-30",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0015",
+            "expected": "2020-06-16",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0022",
+            "expected": "2010-02-02",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0028",
+            "expected": "2028-02-21",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0029",
+            "expected": "2011-02-22",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L05-0008",
+            "expected": "2024-06-08",
+            "actual": "2024-05-26",
+            "candidate_id": "c019",
+            "candidate_text": "26 May 2024",
+            "candidate_value": "2024-05-26",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L05-0011",
+            "expected": "2028-03-22",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          }
+        ],
+        "lease_end": [
+          {
+            "doc_id": "L03-0004",
+            "expected": "2021-04-04",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0010",
+            "expected": "2028-11-27",
+            "actual": "2067-03-05",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0013",
+            "expected": "2046-11-29",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0022",
+            "expected": "2011-01-01",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L05-0011",
+            "expected": "2047-03-21",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L05-0022",
+            "expected": "2026-11-01",
+            "actual": "",
+            "candidate_id": "c015",
+            "candidate_text": "2 November 2016",
+            "candidate_value": "2016-11-02",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L05-0032",
+            "expected": "2016-10-27",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0002",
+            "expected": "2052-08-20",
+            "actual": "2053-01-20",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0003",
+            "expected": "2023-03-14",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0009",
+            "expected": "2034-05-25",
+            "actual": "2024-06-25",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          }
+        ],
+        "term_value": [
+          {
+            "doc_id": "L03-0003",
+            "expected": "24",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0009",
+            "expected": "240",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L03-0010",
+            "expected": "36",
+            "actual": "588",
+            "candidate_id": "c010",
+            "candidate_text": "49 years",
+            "candidate_value": "588",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0014",
+            "expected": "106",
+            "actual": "744",
+            "candidate_id": "c001",
+            "candidate_text": "62 years",
+            "candidate_value": "744",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0015",
+            "expected": "108",
+            "actual": "9",
+            "candidate_id": "c012",
+            "candidate_text": "nine (9) months",
+            "candidate_value": "9",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0017",
+            "expected": "11",
+            "actual": "6",
+            "candidate_id": "c017",
+            "candidate_text": "6 months",
+            "candidate_value": "6",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0019",
+            "expected": "153",
+            "actual": "24",
+            "candidate_id": "c015",
+            "candidate_text": "two years",
+            "candidate_value": "24",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0022",
+            "expected": "11",
+            "actual": "9",
+            "candidate_id": "c018",
+            "candidate_text": "9 (nine) months",
+            "candidate_value": "9",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0024",
+            "expected": "",
+            "actual": "780",
+            "candidate_id": "c001",
+            "candidate_text": "65 years",
+            "candidate_value": "780",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0027",
+            "expected": "168",
+            "actual": "24",
+            "candidate_id": "c018",
+            "candidate_text": "two (2) years",
+            "candidate_value": "24",
+            "blank_reason": ""
+          }
+        ]
+      }
+    },
+    "key_clause_late_page": {
+      "documents": 99,
+      "field_accuracy": {
+        "lease_start": {
+          "correct": 81,
+          "total": 81,
+          "accuracy": 1.0
+        },
+        "lease_end": {
+          "correct": 83,
+          "total": 84,
+          "accuracy": 0.9880952380952381
+        },
+        "term_value": {
+          "correct": 93,
+          "total": 95,
+          "accuracy": 0.9789473684210527
+        }
+      },
+      "blank_reason_counts": {
+        "lease_end:low_confidence": 27,
+        "lease_start:ambiguous_date": 18,
+        "term_value:low_confidence": 24,
+        "lease_end:ambiguous_date": 11
+      },
+      "wrong_candidate_examples": {
+        "lease_start": [],
+        "lease_end": [
+          {
+            "doc_id": "L08-0003",
+            "expected": "2023-03-14",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          }
+        ],
+        "term_value": [
+          {
+            "doc_id": "L08-0003",
+            "expected": "12",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0011",
+            "expected": "11",
+            "actual": "",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          }
+        ]
+      }
+    },
+    "older_quoted_lease": {
+      "documents": 99,
+      "field_accuracy": {
+        "lease_start": {
+          "correct": 81,
+          "total": 81,
+          "accuracy": 1.0
+        },
+        "lease_end": {
+          "correct": 78,
+          "total": 84,
+          "accuracy": 0.9285714285714286
+        },
+        "term_value": {
+          "correct": 57,
+          "total": 95,
+          "accuracy": 0.6
+        }
+      },
+      "blank_reason_counts": {
+        "lease_end:low_confidence": 27,
+        "lease_start:ambiguous_date": 17,
+        "lease_end:ambiguous_date": 11
+      },
+      "wrong_candidate_examples": {
+        "lease_start": [
+          {
+            "doc_id": "L08-0026",
+            "expected": "",
+            "actual": "2007-01-14",
+            "candidate_id": "c011",
+            "candidate_text": "14 January 2007",
+            "candidate_value": "2007-01-14",
+            "blank_reason": ""
+          }
+        ],
+        "lease_end": [
+          {
+            "doc_id": "L05-0000",
+            "expected": "2026-11-09",
+            "actual": "2030-12-09",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0001",
+            "expected": "2029-10-04",
+            "actual": "2034-07-04",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0003",
+            "expected": "2023-03-14",
+            "actual": "2027-03-14",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0015",
+            "expected": "2022-01-12",
+            "actual": "2023-08-12",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0016",
+            "expected": "2027-12-19",
+            "actual": "2023-12-19",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0026",
+            "expected": "",
+            "actual": "2012-01-13",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          },
+          {
+            "doc_id": "L08-0028",
+            "expected": "2029-07-16",
+            "actual": "2029-09-16",
+            "candidate_id": "",
+            "candidate_text": "",
+            "candidate_value": "",
+            "blank_reason": "low_confidence"
+          }
+        ],
+        "term_value": [
+          {
+            "doc_id": "L03-0002",
+            "expected": "",
+            "actual": "60",
+            "candidate_id": "c011",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0003",
+            "expected": "24",
+            "actual": "60",
+            "candidate_id": "c009",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0004",
+            "expected": "92",
+            "actual": "60",
+            "candidate_id": "c020",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0009",
+            "expected": "240",
+            "actual": "60",
+            "candidate_id": "c011",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0014",
+            "expected": "106",
+            "actual": "60",
+            "candidate_id": "c005",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0015",
+            "expected": "108",
+            "actual": "60",
+            "candidate_id": "c012",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0018",
+            "expected": "",
+            "actual": "60",
+            "candidate_id": "c010",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0019",
+            "expected": "153",
+            "actual": "60",
+            "candidate_id": "c012",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0023",
+            "expected": "240",
+            "actual": "60",
+            "candidate_id": "c008",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          },
+          {
+            "doc_id": "L03-0024",
+            "expected": "",
+            "actual": "60",
+            "candidate_id": "c015",
+            "candidate_text": "five years",
+            "candidate_value": "60",
+            "blank_reason": ""
+          }
+        ]
+      }
+    },
+    "repeated_footer_date": {
+      "documents": 99,
+      "field_accuracy": {
+        "lease_start": {
+          "correct": 81,
+          "total": 81,
+          "accuracy": 1.0
+        },
+        "lease_end": {
+          "correct": 84,
+          "total": 84,
+          "accuracy": 1.0
+        },
+        "term_value": {
+          "correct": 95,
+          "total": 95,
+          "accuracy": 1.0
+        }
+      },
+      "blank_reason_counts": {
+        "lease_end:low_confidence": 27,
+        "lease_start:ambiguous_date": 18,
+        "term_value:low_confidence": 22,
+        "lease_end:ambiguous_date": 11
+      },
+      "wrong_candidate_examples": {
+        "lease_start": [],
+        "lease_end": [],
+        "term_value": []
+      }
+    }
+  },
+  "samples": [
+    {
+      "file": "01_start_end_dates.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "derived",
+      "status": "live",
+      "fields": {
+        "lease_start": {
+          "expected": "2016-10-16",
+          "actual": "2016-10-16",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2027-11-15",
+          "actual": "2027-11-15",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "133",
+          "actual": "133",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "02_start_and_term_derive_end.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "derived",
+      "status": "expires_soon",
+      "fields": {
+        "lease_start": {
+          "expected": "2025-08-20",
+          "actual": "2025-08-20",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2026-11-19",
+          "actual": "2026-11-19",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "15",
+          "actual": "15",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "03_all_three_consistent.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "ok",
+      "status": "expired",
+      "fields": {
+        "lease_start": {
+          "expected": "2015-06-26",
+          "actual": "2015-06-26",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2023-04-25",
+          "actual": "2023-04-25",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "94",
+          "actual": "94",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "04_stated_end_disagrees_with_term.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "inconsistent",
+      "status": "inconsistent",
+      "fields": {
+        "lease_start": {
+          "expected": "2023-10-29",
+          "actual": "2023-10-29",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2028-09-16",
+          "actual": "2028-09-16",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "60",
+          "actual": "60",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "05_ambiguous_numeric_date.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "needs_review",
+      "status": "needs_review",
+      "fields": {
+        "lease_start": {
+          "expected": "",
+          "actual": "",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "",
+          "actual": "",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "168",
+          "actual": "168",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "06_long_deed_key_clause_late.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "ok",
+      "status": "not_started",
+      "fields": {
+        "lease_start": {
+          "expected": "2028-10-30",
+          "actual": "2028-10-30",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2030-01-29",
+          "actual": "2030-01-29",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "15",
+          "actual": "15",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "07_expires_soon.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "derived",
+      "status": "expires_soon",
+      "fields": {
+        "lease_start": {
+          "expected": "2025-12-19",
+          "actual": "2025-12-19",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2026-11-18",
+          "actual": "2026-11-18",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "11",
+          "actual": "11",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "08_term_only_words.pdf",
+      "model_loaded": true,
+      "reconciliation_state": "derived",
+      "status": "live",
+      "fields": {
+        "lease_start": {
+          "expected": "2026-08-13",
+          "actual": "2026-08-13",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2027-08-12",
+          "actual": "2027-08-12",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "12",
+          "actual": "12",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    },
+    {
+      "file": "09_scanned_image.png",
+      "model_loaded": true,
+      "reconciliation_state": "derived",
+      "status": "live",
+      "fields": {
+        "lease_start": {
+          "expected": "2026-03-12",
+          "actual": "2026-03-12",
+          "match": true
+        },
+        "lease_end": {
+          "expected": "2035-03-11",
+          "actual": "2035-03-11",
+          "match": true
+        },
+        "lease_term": {
+          "expected": "108",
+          "actual": "108",
+          "match": true
+        }
+      },
+      "ocr_engine": "builtin (ocr_extract_not_found)"
+    }
+  ],
+  "safeguard": "DEMO DATA - NOT REAL AICTE DEADLINES. AI-suggested values are not verified. A person must confirm every value; the software never replaces the competent authority. No model output may start a clock, change routing, or write to any score or policy table. Rules decide, AI only suggests."
+}
