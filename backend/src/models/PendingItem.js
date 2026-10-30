@@ -7,6 +7,7 @@ const pendingItemSchema = new mongoose.Schema({
   raised_by: { type: objectId, ref: "User", required: true },
   due_date: { type: Date, required: true, index: true },
   resolved_at: { type: Date, default: null },
+  response: { type: String, trim: true, default: "", maxlength: 3000 },
   reminder_count: { type: Number, default: 0, min: 0 },
 }, baseOptions);
 

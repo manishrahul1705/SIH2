@@ -18,7 +18,7 @@ if MODEL_DIR not in sys.path:
 import m2_common as C
 
 MODEL_PATH = os.path.join(MODEL_DIR, "m2_model.joblib")
-FIELDS = ("issue_date", "valid_to", "cert_no", "issuer")
+FIELDS = ("issue_date", "valid_from", "valid_to", "cert_no", "issuer")
 _VALID_TO_CONTEXT = re.compile(
     r"\b(?:valid|va[l1i][l1i]?d(?:ity)?|vo[l1i]id(?:ity)?|"
     r"exp[i1l]r[a-z]*|cxpir[a-z]*|e.?ds|end[a-z]*|termination|"
@@ -26,10 +26,39 @@ _VALID_TO_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 _ISSUE_DATE_CONTEXT = re.compile(
-    r"\b(?:issue(?:d)?(?:\s+date)?|dated|date\s+of\s+(?:deed|registration|issue|survey|inspection|approval)|"
+    r"\b(?:issue(?:d)?(?:\s+date)?|dated|date\s+of\s+(?:deed|registration|issue|approval)|"
     r"registration\s+date|execution\s+date|executed\s+on|registered\s+on|"
-    r"approved\s+on|approval\s+date|certificate\s+date|place\s+and\s+date|"
-    r"survey\s+report\s+date)\b",
+    r"approved\s+on|approval\s+date|certificate\s+date|effective\s+date|"
+    r"lease\s+commencement\s+date|indenture\s+made\s+on|place\s+and\s+date)\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_VALID_TO_CONTEXT = re.compile(
+    r"\b(?:valid\s+(?:until|to|through)|validity\s+(?:end|expiry|expiration)\s+date|"
+    r"date\s+of\s+(?:expiry|expiration)|"
+    r"(?:lease\s+)?(?:end|expiry|expiration)\s+date|expires?\s+on)\s*[:=\-–—]*\s*$",
+    re.IGNORECASE,
+)
+_EXPLICIT_ISSUE_DATE_CONTEXT = re.compile(
+    r"\b(?:issue\s+date|date\s+of\s+issue|issued\s+on|registration\s+date|date\s+of\s+registration|"
+    r"execution\s+date|date\s+of\s+execution|executed\s+on|effective\s+date|date\s+of\s+deed|"
+    r"approval\s+date|date\s+of\s+approval|approved\s+on|certificate\s+date|"
+    r"lease\s+commencement\s+date|indenture\s+made\s+on)\s*[:=\-–—]*\s*$",
+    re.IGNORECASE,
+)
+_EXPLICIT_SEARCH_PERIOD_LABEL = re.compile(
+    r"^\s*search\s+period\s*[:=\-–—]\s*",
+    re.IGNORECASE,
+)
+_SEARCH_PERIOD_RANGE = re.compile(r"\b(?:to|through)\b|[–—]", re.IGNORECASE)
+_EXPLICIT_CERT_NO_CONTEXT = re.compile(
+    r"\b(?:certificate|cert\.?|application|reference|registration|record|agreement|audit|"
+    r"map|plan|permit|license|licence|approval\s+order)\s*(?:no\.?|number|ref\.?)\s*[:=#=\-–—]*\s*$",
+    re.IGNORECASE,
+)
+_EXPLICIT_ISSUER_LABEL = re.compile(
+    r"^[\s\-–—•*]*(?:issuer|issued by|issuing authority|issuing office|authority|"
+    r"registering office|registered at|sub[\s-]*registrar(?:y)? office|audited by|auditor|signed by)"
+    r"\s*[:=\-–—]\s*",
     re.IGNORECASE,
 )
 
@@ -158,6 +187,54 @@ def _has_valid_to_context(candidate: dict[str, Any]) -> bool:
     return matches(above_context) and not unrelated_labels.search(local_context)
 
 
+def _explicit_candidate(candidates: list[dict[str, Any]], role: str) -> dict[str, Any] | None:
+    """Prefer a clearly labelled source value over a conflicting model ranking."""
+    for candidate in candidates:
+        kind = str(candidate.get("kind", ""))
+        left = str(candidate.get("ctx_left", "") or "")
+        line = str(candidate.get("line_text", "") or "")
+        if int(candidate.get("ambiguous", 0) or 0):
+            continue
+        if role in {"issue_date", "valid_to"} and kind == "date":
+            pattern = _EXPLICIT_ISSUE_DATE_CONTEXT if role == "issue_date" else _EXPLICIT_VALID_TO_CONTEXT
+            if pattern.search(left):
+                return candidate
+        elif role == "cert_no" and kind == "number" and _EXPLICIT_CERT_NO_CONTEXT.search(left):
+            return candidate
+        elif role == "issuer" and kind == "issuer" and _EXPLICIT_ISSUER_LABEL.match(line):
+            return candidate
+    return None
+
+
+def _explicit_search_period(candidates: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    dates_by_line: dict[str, list[dict[str, Any]]] = {}
+    for candidate in candidates:
+        if candidate.get("kind") != "date":
+            continue
+        line = str(candidate.get("line_text", "") or "")
+        if _EXPLICIT_SEARCH_PERIOD_LABEL.match(line) and _SEARCH_PERIOD_RANGE.search(line):
+            dates_by_line.setdefault(line, []).append(candidate)
+
+    for line, dates in dates_by_line.items():
+        if len(dates) != 2:
+            continue
+        ordered = sorted(dates, key=lambda candidate: float(candidate.get("x0", 0.0) or 0.0))
+        return ordered[0], ordered[1]
+    return None
+
+
+def _is_explicit_search_period(candidate: dict[str, Any]) -> bool:
+    line = str(candidate.get("line_text", "") or "")
+    return bool(_EXPLICIT_SEARCH_PERIOD_LABEL.match(line) and _SEARCH_PERIOD_RANGE.search(line))
+
+
+def _explicit_confidence(candidate: dict[str, Any]) -> float:
+    ocr_confidence = float(candidate.get("ocr_conf", 0.0) or 0.0)
+    if not 0.0 <= ocr_confidence <= 1.0:
+        return 0.0
+    return min(0.95, ocr_confidence)
+
+
 def _ambiguous_role_hint(candidate: dict[str, Any]) -> str | None:
     context = str(candidate.get("ctx_left", "") or "")
     if _VALID_TO_CONTEXT.search(context):
@@ -254,6 +331,23 @@ def _predict_many_with_model(
             selected_by_doc[doc_id]["issue_date"] = ("date", candidate, 0.0)
             selected_by_doc[doc_id]["valid_to"] = ("date", candidate, 0.0)
 
+    for doc_id, (_doc_type, candidates) in documents.items():
+        for role in FIELDS:
+            candidate = _explicit_candidate(candidates, role)
+            if candidate is None:
+                continue
+            confidence = _explicit_confidence(candidate)
+            if confidence >= 0.60:
+                selected_by_doc[doc_id][role] = (str(candidate["kind"]), candidate, confidence)
+        search_period = _explicit_search_period(candidates)
+        if search_period is not None:
+            for role, candidate in zip(("valid_from", "valid_to"), search_period):
+                selected_by_doc[doc_id][role] = (
+                    "date",
+                    candidate,
+                    _explicit_confidence(candidate),
+                )
+
     explanations_by_doc: dict[str, dict[str, str]] = {doc_id: {} for doc_id in documents}
     for kind in C.KIND_ROLES:
         explain_rows = []
@@ -277,15 +371,21 @@ def _predict_many_with_model(
                 results[doc_id][role] = _blank("ambiguous_date", version, ambiguous=True)
             elif confidence < 0.60:
                 results[doc_id][role] = _blank("confidence_below_threshold", version)
-            elif role == "valid_to" and not _has_valid_to_context(candidate):
+            elif role == "valid_to" and not (
+                _has_valid_to_context(candidate) or _is_explicit_search_period(candidate)
+            ):
                 results[doc_id][role] = _blank("no_validity_context", version)
             else:
                 results[doc_id][role] = _prediction(
                     candidate, confidence, version, explanations_by_doc[doc_id].get(role, "")
                 )
         issue = results[doc_id]["issue_date"]
+        valid_from = results[doc_id]["valid_from"]
         valid = results[doc_id]["valid_to"]
-        if issue["value"] and valid["value"] and issue["value"] >= valid["value"]:
+        if valid_from["value"] and valid["value"] and valid_from["value"] >= valid["value"]:
+            results[doc_id]["valid_from"] = _blank("date_order_check_failed", version)
+            results[doc_id]["valid_to"] = _blank("date_order_check_failed", version)
+        elif not valid_from["value"] and issue["value"] and valid["value"] and issue["value"] >= valid["value"]:
             lower = "issue_date" if issue["confidence"] <= valid["confidence"] else "valid_to"
             results[doc_id][lower] = _blank("date_order_check_failed", version)
     return results

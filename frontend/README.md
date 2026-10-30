@@ -1,6 +1,6 @@
 # ApprovalTrack frontend
 
-ApprovalTrack is a workflow prototype for the All India Council for Technical Education (AICTE). Login is verified through the ApprovalTrack backend; role assignments come from the authenticated backend account. Most workspace records and interactions remain fictional mock data.
+ApprovalTrack is a workflow prototype for the All India Council for Technical Education (AICTE). Login is verified through the ApprovalTrack backend; role assignments come from the authenticated backend account. Institution intake cases, their OCR/M1–M3 document reviews, and student/faculty complaints and reports use backend APIs. The seven-type approval pipeline is deterministic; AI findings do not choose or advance stages.
 
 ## Run locally
 
@@ -16,8 +16,8 @@ Run production checks with `npm run build` and `npm test`.
 
 The Admin **Alert rules** and **Users and roles** pages load and update data
 through the backend API. User creation and status changes, as well as rule
-configuration changes, require an authenticated Admin account. Other workflow
-pages continue to use local prototype data.
+configuration changes, require an authenticated Admin account. Some analytics
+and design-system pages remain prototype data.
 
 ## Demo login accounts
 
@@ -38,16 +38,12 @@ development only.
 
 ## Demo walkthrough
 
-1. Sign in with an **Institution** demo account and open **New application**. Select a fictional application type and inspect the live route preview from policy v2026.2. Complete the wizard and submit the demo case.
-2. Open **My cases**, select a case and inspect the route stepper and institution/officer ownership clocks.
-3. Sign out and sign in with a **Scrutiny Officer** account, open a case from **My queue**, and attempt a return without text in the required reason field. The confirm action stays disabled. Add a reason and return the case; the action is recorded in the audit trail.
-4. Sign in again as the institution and submit a deficiency response. The case response is not marked verified automatically.
-5. Sign in again as an officer and complete a scrutiny stage. The policy-defined next stage is displayed; EVC work is represented as one task per case/policy route.
-6. Open **Documents and validity**, then **Upload renewal**. Use the blurred-certificate sample to see a low-confidence field left blank. AI values show model/version and confidence. Select an uploaded sample and confirm proposed fields to start the clock; until confirmation, no clock starts.
-7. Acknowledge a notification. The toast says the obligation is still open.
-8. From the institution dashboard, use **Simulate: upload fire renewal**. The score calculator moves the Action Score from 63 to 70. The verifier completing review leaves that score unchanged.
-9. Confirm the lease flag from the document review. The confirmation explains the 10-point deduction and updates the score.
-10. Sign in as **Admin**, open **AI service**, and stop AI. Sign in again as an institution user; manual entry remains available.
+1. Sign in with an **Institution** demo account, open **New application**, choose one of the seven application types, upload supporting evidence, and submit.
+2. Open **My cases**. The stage review shows the deterministic sequence and SLA, extracted-field confirmation state, and a protected document preview. Source bounding boxes are green at 90%+, amber at 70–89%, and red below 70%.
+3. As the current stage owner, use **Request Another User / Stage Help**. The stage freezes and approval/return controls are hidden until the assignee records a decision. The owner SLA resumes after that decision.
+4. Review the assist task from **Assist requests** as its assignee, then return to the stage owner and approve each allocated stage. The final stage is assigned to an Administrator and appears in **Administrator final approval queue**. Final approval queues the institution email and in-app notification and creates any conditional undertaking records.
+5. To check a deficiency path, use **Reject / Raise Deficiency** with a written reason, respond as the institution, and resubmit the case.
+6. Student and faculty demo accounts still support their complaint/report workflows; OCR/M1/M2/M3 document analysis remains available for institution applications.
 
 ## Project structure
 
@@ -55,6 +51,9 @@ development only.
 - `src/layouts/`: authenticated application shell and demo login shell.
 - `src/pages/`: separate page entry points for login, notifications, audit, institution, officer, committee, authority, admin, and design-system pages.
 - `src/components/ui/`: accessible shared primitives, data table, status badges, ownership clocks, stepper, score components, dialogs, and AI field row.
+- `src/components/StageWorkflowPanel.jsx`: deterministic stage stepper, assist freeze/decision state, and stage actions.
+- `src/components/DocumentEvidencePreview.jsx`: authenticated PDF/image source preview with confidence-colored extraction overlays.
+- `src/pages/AssistRequestsPage.jsx`: per-user queue of pending stage-assist requests.
 - `src/data/`: fictional JSON fixtures and policy settings.
 - `src/services/admin.js`: authenticated Admin API requests for users, institutions, and alert rules.
 - `src/services/api.js`: promise-based mock service with a 300–600 ms delay.

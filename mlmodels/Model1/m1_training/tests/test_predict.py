@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import sys
 from pathlib import Path
 
@@ -132,6 +133,14 @@ def test_missing_file_returns_manual_entry_and_exit_code_2(capsys: pytest.Captur
     assert predict_m1.main(["--file", str(missing)]) == 2
     output = capsys.readouterr().out
     assert json.loads(output)["needs_manual_entry"] is True
+
+
+def test_text_stdin_uses_precomputed_ocr_text(monkeypatch, capsys: pytest.CaptureFixture) -> None:
+    result = _result(0.95)
+    monkeypatch.setattr(predict_m1, "predict", lambda text: result if text == "normalized OCR text" else {})
+    monkeypatch.setattr(sys, "stdin", io.StringIO("normalized OCR text"))
+    assert predict_m1.main(["--text-stdin"]) == 0
+    assert json.loads(capsys.readouterr().out) == result
 
 
 def test_renamed_executable_is_quarantined_and_exit_code_2(

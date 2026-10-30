@@ -29,12 +29,16 @@ const demoAccounts = [
   ["institution@approvaltrack.demo", "INSTITUTION", "Demo Institution Officer", "DEMO-SI-001"],
   ["scrutiny@approvaltrack.demo", "SCRUTINY_OFFICER", "Demo Scrutiny Officer", null],
   ["evc@approvaltrack.demo", "EVC", "Demo EVC Member", null],
+  ["evc-chairman@approvaltrack.demo", "EVC_CHAIRMAN", "Demo EVC Chairman", null],
   ["sac@approvaltrack.demo", "SAC_SHC", "Demo SAC/SHC Member", null],
   ["bureau@approvaltrack.demo", "BUREAU_OFFICER", "Demo Bureau Officer", null],
   ["senior@approvaltrack.demo", "SENIOR_AUTHORITY", "Demo Senior Authority", null],
   ["admin@approvaltrack.demo", "ADMIN", "Demo Administrator", null],
   ["student@approvaltrack.demo", "STUDENT", "Demo Student", "DEMO-SI-001"],
   ["faculty@approvaltrack.demo", "FACULTY", "Demo Faculty Member", "DEMO-SI-001"],
+  ["grievance@approvaltrack.demo", "GRIEVANCE_OFFICER", "Demo Grievance Officer", "DEMO-SI-001"],
+  ["ombudsperson@approvaltrack.demo", "OMBUDSPERSON", "Demo Ombudsperson", null],
+  ["university-dte@approvaltrack.demo", "UNIVERSITY_DTE_OFFICER", "Demo University/DTE Officer", null],
 ];
 
 function daysFromToday(days) {
@@ -113,7 +117,7 @@ export async function seedDatabase() {
       { application_number: "AT-DEMO-2026-001", institution_id: institutions[0]._id, type: "EXTENSION_OF_APPROVAL", current_stage: "SCRUTINY", status: "IN_PROGRESS", assigned_officer_id: userByRole.get("SCRUTINY_OFFICER")._id, is_compliant: true },
       { application_number: "AT-DEMO-2026-002", institution_id: institutions[1]._id, type: "NEW", current_stage: "EVC", status: "IN_PROGRESS", assigned_officer_id: userByRole.get("SCRUTINY_OFFICER")._id, is_compliant: true },
       { application_number: "AT-DEMO-2026-003", institution_id: institutions[2]._id, type: "INCREASE_INTAKE", current_stage: "SAC_SHC", status: "IN_PROGRESS", assigned_officer_id: userByRole.get("SCRUTINY_OFFICER")._id, is_compliant: true },
-      { application_number: "AT-DEMO-2026-004", institution_id: institutions[0]._id, type: "NEW_COURSE", current_stage: "DECISION", status: "IN_PROGRESS", assigned_officer_id: userByRole.get("BUREAU_OFFICER")._id, is_compliant: false },
+      { application_number: "AT-DEMO-2026-004", institution_id: institutions[0]._id, type: "NEW_COURSE", current_stage: "DECISION", status: "IN_PROGRESS", assigned_officer_id: userByRole.get("ADMIN")._id, is_compliant: false },
       { application_number: "AT-DEMO-2026-005", institution_id: institutions[1]._id, type: "EXTENSION_OF_APPROVAL", current_stage: "SCRUTINY", status: "IN_PROGRESS", assigned_officer_id: userByRole.get("SCRUTINY_OFFICER")._id, is_compliant: true },
     ];
     const applications = await Promise.all(applicationSamples.map((sample) => Application.findOneAndUpdate(
@@ -122,11 +126,11 @@ export async function seedDatabase() {
       { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true },
     )));
     const stageDefaults = {
-      NEW: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["EVC", "EVC", 2, 15], ["SAC_SHC", "SAC_SHC", 3, 10], ["DECISION", "BUREAU_OFFICER", 4, 7]],
-      EXTENSION_OF_APPROVAL: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["DECISION", "BUREAU_OFFICER", 2, 7]],
-      INCREASE_INTAKE: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["EVC", "EVC", 2, 15], ["SAC_SHC", "SAC_SHC", 3, 10], ["DECISION", "BUREAU_OFFICER", 4, 7]],
-      NEW_COURSE: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["EVC", "EVC", 2, 15], ["SAC_SHC", "SAC_SHC", 3, 10], ["DECISION", "BUREAU_OFFICER", 4, 7]],
-      CLOSURE: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["DECISION", "BUREAU_OFFICER", 1, 7]],
+      NEW: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["EVC", "EVC", 2, 15], ["SAC_SHC", "SAC_SHC", 3, 10], ["DECISION", "ADMIN", 4, 7]],
+      EXTENSION_OF_APPROVAL: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["DECISION", "ADMIN", 2, 7]],
+      INCREASE_INTAKE: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["EVC", "EVC", 2, 15], ["SAC_SHC", "SAC_SHC", 3, 10], ["DECISION", "ADMIN", 4, 7]],
+      NEW_COURSE: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["RE_SCRUTINY", "SCRUTINY_OFFICER", 1, 7], ["EVC", "EVC", 2, 15], ["SAC_SHC", "SAC_SHC", 3, 10], ["DECISION", "ADMIN", 4, 7]],
+      CLOSURE: [["SCRUTINY", "SCRUTINY_OFFICER", 0, 10], ["DECISION", "ADMIN", 1, 7]],
     };
     for (const [type, stages] of Object.entries(stageDefaults)) {
       for (const [stage, role, sequence, max_days] of stages) {

@@ -28,4 +28,12 @@ export const localStorage = Object.freeze({
   async remove(filePath) {
     await fs.rm(localStorage.resolve(filePath), { force: true });
   },
+  async quarantine(filePath) {
+    const sourcePath = localStorage.resolve(filePath);
+    const quarantineDirectory = path.join(root, "quarantine");
+    await fs.mkdir(quarantineDirectory, { recursive: true, mode: 0o700 });
+    const targetPath = path.join(quarantineDirectory, path.basename(sourcePath));
+    await fs.rename(sourcePath, targetPath);
+    return path.relative(root, targetPath);
+  },
 });

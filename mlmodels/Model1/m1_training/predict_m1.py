@@ -231,8 +231,14 @@ def main(argv: list[str] | None = None) -> int:
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--file", type=Path)
     source.add_argument("--text")
+    source.add_argument("--text-stdin", action="store_true")
     args = parser.parse_args(argv)
-    result = predict_file(args.file) if args.file is not None else predict(args.text)
+    if args.file is not None:
+        result = predict_file(args.file)
+    elif args.text_stdin:
+        result = predict(sys.stdin.read())
+    else:
+        result = predict(args.text)
     print(json.dumps(result, ensure_ascii=False))
     return 2 if result["needs_manual_entry"] else 0
 

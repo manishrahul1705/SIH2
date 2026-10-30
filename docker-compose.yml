@@ -1,0 +1,217 @@
+services:
+  mongo-keyfile-init:
+    image: mongo:7
+    restart: "no"
+    environment:
+      MONGO_REPLICA_KEY: ${MONGO_REPLICA_KEY:?Set a unique MongoDB replica-set key in .env}
+    volumes:
+      - mongo-keyfile:/key
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mkdir -p /key
+        printf '%s' "$$MONGO_REPLICA_KEY" > /key/replica.key
+        chown 999:999 /key/replica.key
+        chmod 400 /key/replica.key
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set a URL-safe MongoDB root username in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set a URL-safe MongoDB root password in .env}
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile/replica.key"]
+    volumes:
+      - mongo-data:/data/db
+      - mongo-keyfile:/etc/mongo-keyfile:ro
+    depends_on:
+      mongo-keyfile-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mongo-init:
+    image: mongo:7
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set a URL-safe MongoDB root username in .env}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set a URL-safe MongoDB root password in .env}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?Set a URL-safe MongoDB application username in .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set a URL-safe MongoDB application password in .env}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mongosh "mongodb://$${MONGO_ROOT_USERNAME}:$${MONGO_ROOT_PASSWORD}@mongo:27017/admin?authSource=admin" --quiet --eval '
+          try { rs.status().ok; }
+          catch (error) {
+            if (error.codeName === "NotYetInitialized") {
+              rs.initiate({_id:"rs0", members:[{_id:0, host:"mongo:27017"}]});
+            } else { throw error; }
+          }
+        '
+        primary_ready=0
+        for attempt in $$(seq 1 60); do
+          if mongosh "mongodb://$${MONGO_ROOT_USERNAME}:$${MONGO_ROOT_PASSWORD}@mongo:27017/admin?authSource=admin&replicaSet=rs0" --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; then
+            primary_ready=1
+            break
+          fi
+          sleep 2
+        done
+        if [ "$$primary_ready" -ne 1 ]; then
+          echo "MongoDB replica set did not elect a primary" >&2
+          exit 1
+        fi
+        mongosh "mongodb://$${MONGO_ROOT_USERNAME}:$${MONGO_ROOT_PASSWORD}@mongo:27017/approvaltrack?authSource=admin&replicaSet=rs0" --quiet --eval "
+          if (!db.getUser('$${MONGO_APP_USERNAME}')) {
+            db.createUser({user:'$${MONGO_APP_USERNAME}', pwd:'$${MONGO_APP_PASSWORD}', roles:[{role:'readWrite', db:'approvaltrack'}]});
+          }
+        '
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    expose:
+      - "3310"
+    volumes:
+      - clamav-data:/var/lib/clamav
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      AI_SERVICE_ENV: production
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN in .env}
+      AI_MODEL_ROOT: /app/mlmodels
+      AI_UPLOAD_ROOT: /app/uploads
+    volumes:
+      - uploads-data:/app/uploads
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: mongodb://${MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD}@mongo:27017/approvaltrack?authSource=approvaltrack&replicaSet=rs0
+      QUEUE_MODE: bullmq
+      REDIS_URL: redis://redis:6379
+      COOKIE_SECRET: ${COOKIE_SECRET:?Set COOKIE_SECRET to a random value of at least 32 characters}
+      SESSION_COOKIE_NAME: approvaltrack_session
+      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      UPLOAD_DIR: /app/uploads
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+      AI_SERVICE_URL: http://ai-service:8001
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN in .env}
+      TZ: Asia/Kolkata
+      NOTIFY_MODE: ${NOTIFY_MODE:-log}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
+      MAIL_FROM: ${MAIL_FROM:-ApprovalTrack Demo <onboarding@resend.dev>}
+      TEXTBEE_API_KEY: ${TEXTBEE_API_KEY:-}
+      TEXTBEE_DEVICE_ID: ${TEXTBEE_DEVICE_ID:-}
+    volumes:
+      - uploads-data:/app/uploads
+    expose:
+      - "4000"
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    command: ["node", "src/modules/jobs/workerProcess.js"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://${MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD}@mongo:27017/approvaltrack?authSource=approvaltrack&replicaSet=rs0
+      QUEUE_MODE: bullmq
+      REDIS_URL: redis://redis:6379
+      COOKIE_SECRET: ${COOKIE_SECRET:?Set COOKIE_SECRET in .env}
+      FRONTEND_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      UPLOAD_DIR: /app/uploads
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+      AI_SERVICE_URL: http://ai-service:8001
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN in .env}
+      TZ: Asia/Kolkata
+      NOTIFY_MODE: ${NOTIFY_MODE:-log}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-ApprovalTrack Demo <onboarding@resend.dev>}
+      TEXTBEE_API_KEY: ${TEXTBEE_API_KEY:-}
+      TEXTBEE_DEVICE_ID: ${TEXTBEE_DEVICE_ID:-}
+    volumes:
+      - uploads-data:/app/uploads
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+      ai-service:
+        condition: service_started
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  mongo-data:
+  mongo-keyfile:
+  redis-data:
+  uploads-data:
+  clamav-data:

@@ -1,9 +1,10 @@
 import express from "express";
+import crypto from "node:crypto";
 import { z } from "zod";
 import { authenticate, requireRole } from "../../middleware/auth.js";
 import { withTransaction, writeAudit } from "../../middleware/audit.js";
 import { validate } from "../../middleware/validate.js";
-import { Application, Faculty, Institution, Student, User } from "../../models/index.js";
+import { Application, Faculty, Institution, OutboxEvent, Student, User } from "../../models/index.js";
 
 const id = z.string().regex(/^[a-f\d]{24}$/i);
 const patchSchema = z.object({
@@ -77,6 +78,13 @@ export function institutionsRouter() {
           );
         }
         await writeAudit({ actor_id: req.user._id, action: "INSTITUTION_UPDATED", entity: "Institution", entity_id: institution._id, before_json: before, after_json: institution.toObject(), ip: req.ip }, { session });
+        await OutboxEvent.create([{
+          eventId: crypto.randomUUID(),
+          eventType: "institution.updated",
+          entityId: String(institution._id),
+          payload: { institutionId: String(institution._id), actorId: String(req.user._id), changedFields: Object.keys(req.body) },
+          publishedAt: null,
+        }], session ? { session } : {});
       });
       return res.json({ data: institution, error: null, meta: { requestId: req.id } });
     } catch (error) {

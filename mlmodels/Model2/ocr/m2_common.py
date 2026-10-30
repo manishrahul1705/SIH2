@@ -38,8 +38,11 @@ DATE_PATTERNS = [
     ("iso", re.compile(r"(?<![\w/])(\d{4})([-/.])(\d{1,2})\2(\d{1,2})(?![\w/])")),
     ("num", re.compile(r"(?<![\w/])(\d{1,2})([/\-.])(\d{1,2})\2(\d{4}|\d{2})(?![\w/])")),
 ]
-ISSUER_LABEL = re.compile(r"^\s*(issued by|issuing authority|issuing office|authority|registering office|registered at|"
-                          r"audited by|auditor|signed by)\s*[:\-\u2013]\s*", re.I)
+ISSUER_LABEL = re.compile(
+    r"^[\s\-–—•*]*(issuer|issued by|issuing authority|issuing office|authority|registering office|registered at|"
+    r"sub[\s-]*registrar(?:y)? office|audited by|auditor|signed by)\s*[:=\-–—]\s*",
+    re.I,
+)
 ISSUER_KEYWORDS = re.compile(r"\b(department|council|office|authority|board|directorate|committee|registrar|commission|"
                              r"services|corporation|chartered|accountants|association|bureau|cell|section|company)\b", re.I)
 _TRAIL = ".,;:)(]["
@@ -183,7 +186,8 @@ def find_candidates(pages, doc_type="other"):
             n_w = len(ks_all)
             dig_frac = sum(c.isdigit() for c in text) / max(len(text), 1)
             zone = (first_page and y0 < 0.30) or (last_page and y0 > 0.80) or bool(m_lab) or bool(ISSUER_KEYWORDS.search(text))
-            if zone and 2 <= n_w <= 12 and dig_frac <= 0.15 and not date_spans and ks_all:
+            min_words = 1 if m_lab else 2
+            if zone and min_words <= n_w <= 12 and dig_frac <= 0.15 and not date_spans and ks_all:
                 cands.append(_make(words, pg, l, li, lines, line_texts, ks_all[0], ks_all[-1], "issuer", _clean(text), text.strip(), False,
                                    "labelled_line" if m_lab else "line", [], n_pages, len(lines)))
     _doc_level(cands, doc_type)

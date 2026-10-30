@@ -29,3 +29,21 @@ export const DEFAULT_SCORE_WEIGHTS = Object.freeze({
   evcReadiness: 10,
   history: 20,
 });
+
+export const DEFAULT_PIPELINE_SETTINGS = Object.freeze({
+  maxFileMB: 20,
+  maxPages: 40,
+  aiTimeoutMs: 8000,
+  greenThreshold: 0.9,
+  amberThreshold: 0.6,
+  heuristicConfidenceCap: 0.85,
+  expiringSoonDays: 30,
+  leaseExpiringSoonDays: 90,
+  minOcrConfidence: 0.55,
+  endToleranceDays: 1,
+  blockSubmitOnMissing: false,
+  blockAdvanceOnOpenHighFindings: false,
+  prioritiseNewInstitutions: false,
+  minLeaseTermYears: null,
+  holderAssignment: "least_open_cases",
+});

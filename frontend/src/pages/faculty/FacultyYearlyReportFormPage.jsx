@@ -42,6 +42,7 @@ export default function FacultyYearlyReportFormPage() {
   const [form, setForm] = useState(blankReport);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
 
   function update(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -73,6 +74,7 @@ export default function FacultyYearlyReportFormPage() {
           institutional_roles: lines(form.institutional_roles),
         },
       });
+      for (const file of evidenceFiles) await stakeholderApi.uploadYearlyReportEvidence(saved._id, file);
       if (submit) await stakeholderApi.submitYearlyReport(saved._id);
       await reload();
       navigate("/faculty/yearly-reports", { state: { createdId: saved._id } });
@@ -86,7 +88,7 @@ export default function FacultyYearlyReportFormPage() {
   const existing = reports.find((report) => report.academic_year === form.academic_year);
   return <div className="stakeholder-page">
     <PageHeader eyebrow="ANNUAL FACULTY REPORT" title="Submit Yearly Report"
-      description="Save a report to the authenticated faculty account. Only entered values are submitted." />
+      description="This is an ApprovalTrack faculty-portal extension. APH 2024–27's annual report requirement is institution-level Internal Committee reporting, not an individual faculty annual report." />
     {loading && <Panel title="Loading profile">Loading your faculty profile and saved reports...</Panel>}
     {loadError && <p role="alert">{loadError}</p>}
     {!loading && !faculty && <Panel title="Faculty profile unavailable"><p>This account does not have a linked faculty profile. A report cannot be saved.</p></Panel>}
@@ -111,6 +113,10 @@ export default function FacultyYearlyReportFormPage() {
           <textarea rows={3} value={form[key]} onChange={(event) => update(key, event.target.value)} />
         </label>)}
       </div>
+      <label className="stakeholder-field stakeholder-field-full">Supporting evidence (optional)
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple onChange={(event) => setEvidenceFiles(Array.from(event.target.files || []).slice(0, 10))} />
+        <small>{evidenceFiles.map((file) => file.name).join(", ") || "PDF, JPEG or PNG; maximum ten files, 15 MB each. Attachments are stored with this report."}</small>
+      </label>
     </Panel>
     {existing && <p>Editing the saved {existing.status.toLowerCase()} report for this academic year.</p>}
     {error && <div className="stakeholder-form-error" role="alert">{error}</div>}
@@ -118,6 +124,6 @@ export default function FacultyYearlyReportFormPage() {
       <button type="button" className="stakeholder-button secondary" disabled={busy || loading || !faculty || !form.academic_year || !form.due_date} onClick={() => save(false)}>Save draft to backend</button>
       <button type="button" className="stakeholder-button primary" disabled={busy || loading || !faculty || !form.academic_year || !form.due_date} onClick={() => save(true)}>Submit report</button>
     </div>
-    <SafeguardNote tone="amber">This report form does not upload supporting files because the yearly-report API does not provide evidence-file upload. Submitting changes the backend report status only.</SafeguardNote>
+    <SafeguardNote tone="blue">Evidence attachments are stored with the report. Draft or returned reports can be edited; submitted reports are not reopened by this form.</SafeguardNote>
   </div>;
 }

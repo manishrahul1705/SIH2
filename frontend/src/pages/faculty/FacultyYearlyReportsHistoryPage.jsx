@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { PageHeader, Panel, SafeguardNote, StatusPill } from "../../components/stakeholder/PortalPrimitives";
 import { useStakeholder } from "../../context/StakeholderContext";
 import { reportSummary } from "../../services/stakeholder";
+import { stakeholderApi } from "../../services/stakeholder";
 
 function statusLabel(status = "") {
   return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -19,6 +20,19 @@ function tone(status = "") {
 export default function FacultyYearlyReportsHistoryPage() {
   const { reports, faculty, loading, error } = useStakeholder();
   const [selected, setSelected] = useState(null);
+  const [actionError, setActionError] = useState("");
+  async function download(report, evidence) {
+    setActionError("");
+    try {
+      const blob = await stakeholderApi.downloadYearlyReportEvidence(report._id, evidence._id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = evidence.file_name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) { setActionError(downloadError.message); }
+  }
   return <div className="stakeholder-page">
     <PageHeader eyebrow="FACULTY SUBMISSIONS" title="My Yearly Reports History"
       description="Reports returned by the authenticated yearly-report API." />
@@ -26,9 +40,12 @@ export default function FacultyYearlyReportsHistoryPage() {
     <Panel title="Annual reports" description={`Faculty profile: ${faculty?.name || "Not linked"} · ${faculty?.department || "Department not recorded"}`}>
       {loading ? <p>Loading reports...</p> : error ? <p role="alert">{error}</p> : reports.length ? <div className="stakeholder-report-list">{reports.map((report) => <article className="stakeholder-report-card" key={report._id}>
         <div className="stakeholder-report-icon"><FileCheck2 size={20} /></div>
-        <div className="stakeholder-report-copy"><div><strong>Academic year {report.academic_year}</strong><StatusPill tone={tone(report.status)}>{statusLabel(report.status)}</StatusPill></div><p>{reportSummary(report)}</p><small>{report._id}{report.submitted_at ? ` · Submitted ${new Date(report.submitted_at).toLocaleString()}` : " · Not submitted"}</small></div>
+        <div className="stakeholder-report-copy"><div><strong>Academic year {report.academic_year}</strong><StatusPill tone={tone(report.status)}>{statusLabel(report.status)}</StatusPill></div><p>{reportSummary(report)}</p><small>{report._id}{report.submitted_at ? ` · Submitted ${new Date(report.submitted_at).toLocaleString()}` : " · Not submitted"}</small>
+          {!!report.evidence?.length && <div className="stakeholder-evidence-list"><strong>Evidence:</strong> {report.evidence.map((item) => <button className="stakeholder-link-button" key={item._id} onClick={() => download(report, item)}>{item.file_name}</button>)}</div>}
+        </div>
         <button type="button" className="stakeholder-button secondary small" onClick={() => setSelected(report)}><Eye size={15} />View report</button>
       </article>)}</div> : <div className="stakeholder-empty"><strong>No yearly reports found</strong><p>There are no backend reports for this faculty profile.</p><Link className="stakeholder-button primary" to="/faculty/yearly-report/new">Create report</Link></div>}
+      {actionError && <p role="alert">{actionError}</p>}
     </Panel>
     {selected && <div className="stakeholder-modal-backdrop" role="presentation" onClick={() => setSelected(null)}>
       <section className="stakeholder-modal" role="dialog" aria-modal="true" aria-labelledby="report-preview-title" onClick={(event) => event.stopPropagation()}>

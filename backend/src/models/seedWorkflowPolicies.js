@@ -4,7 +4,7 @@ import { connectDatabase, disconnectDatabase } from "./db.js";
 import { Policy, User } from "./index.js";
 import { APPLICATION_TYPES, CHECKLIST_SLOTS } from "../engine/checklist.js";
 import { buildCaseRoute } from "../engine/routes.js";
-import { DEFAULT_ALERT_RULES, DEFAULT_SCORE_WEIGHTS, DEFAULT_STAGE_COMPLETION } from "../engine/policyDefaults.js";
+import { DEFAULT_ALERT_RULES, DEFAULT_PIPELINE_SETTINGS, DEFAULT_SCORE_WEIGHTS, DEFAULT_STAGE_COMPLETION } from "../engine/policyDefaults.js";
 import { logger } from "../config/logger.js";
 
 export async function seedWorkflowPolicies() {
@@ -20,6 +20,7 @@ export async function seedWorkflowPolicies() {
       alertRules: DEFAULT_ALERT_RULES,
       scoreWeights: DEFAULT_SCORE_WEIGHTS,
       blockSubmitOnMissing: false,
+      pipelineSettings: DEFAULT_PIPELINE_SETTINGS,
       notes: "Seed configuration; checklist matrix, route choices, time windows and score weights are assumptions to verify against the final handbook.",
     };
     const versions = [

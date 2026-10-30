@@ -1,6 +1,15 @@
 const INDIA_OFFSET_MINUTES = 330;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export function indiaCalendarDateEnd(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)
+    || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new RangeError("year, month, and day must describe a valid calendar date");
+  }
+  return new Date(date.getTime() + DAY_MS - INDIA_OFFSET_MINUTES * 60_000 - 1);
+}
+
 export function dueStatus({ dueAt, dueKind = "timestamp", now = new Date(), dateCutoffHour = 0 }) {
   if (dueAt == null || dueAt === "") return "data_quality";
   const instant = now instanceof Date ? now : new Date(now);

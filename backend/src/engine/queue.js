@@ -23,3 +23,10 @@ export function orderOfficerQueue(items, now = new Date()) {
 export function institutionRollupCount(items) {
   return items.filter((item) => item.ownerType === "institution").length;
 }
+
+export function chooseLeastLoadedOfficer(officers, openCaseCounts = new Map()) {
+  return [...officers].sort((left, right) => (
+    (openCaseCounts.get(String(left._id)) || 0) - (openCaseCounts.get(String(right._id)) || 0)
+    || String(left._id).localeCompare(String(right._id))
+  ))[0] || null;
+}

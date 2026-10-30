@@ -6,6 +6,7 @@ test("dashboard data is fetched from authenticated backend endpoints without fix
   const requests = [];
   const responses = {
     "/dashboard/overview": { applications: 0, openAlerts: 0 },
+    "/dashboard/action-score": { assessmentComplete: false },
     "/cases?page=1&pageSize=100": [],
     "/documents?page=1&pageSize=100": [],
     "/alerts?page=1&pageSize=100": [],

@@ -4,6 +4,7 @@ import { baseOptions, objectId, registerModel } from "./common.js";
 const caseObligationSchema = new mongoose.Schema({
   caseId: { type: objectId, ref: "CaseRecord", required: true, index: true },
   institutionId: { type: objectId, ref: "Institution", required: true, index: true },
+  sourceDocumentId: { type: objectId, ref: "Document", default: null, index: true },
   type: { type: String, enum: ["undertaking", "validity", "evc", "deficiency"], required: true },
   title: { type: String, required: true, trim: true, maxlength: 200 },
   dueAt: { type: Date, default: null, index: true },
@@ -23,4 +24,9 @@ const caseObligationSchema = new mongoose.Schema({
 
 caseObligationSchema.index({ dueAt: 1, closure: 1 }, { name: "obligation_due_open" });
 caseObligationSchema.index({ ownerId: 1, closure: 1 }, { name: "obligation_owner_open" });
+caseObligationSchema.index({ sourceDocumentId: 1, type: 1 }, {
+  unique: true,
+  name: "validity_obligation_document_unique",
+  partialFilterExpression: { sourceDocumentId: { $type: "objectId" }, type: "validity" },
+});
 export const CaseObligation = registerModel("CaseObligation", caseObligationSchema);

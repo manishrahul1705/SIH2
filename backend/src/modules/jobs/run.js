@@ -1,13 +1,57 @@
-import { Alert, Application, AuditLog, CaseObligation, CaseRecord, Document, Faculty, LeaseDetail, PendingItem, Policy, Session, StageConfig, StageHistory, Undertaking, User, YearlyReport } from "../../models/index.js";
+import { Alert, Application, AuditLog, CaseObligation, CaseRecord, Complaint, Document, Faculty, Institution, InstitutionAnnualReport, LeaseDetail, PendingItem, Policy, ProcessingRun, Session, StageConfig, StageHistory, Undertaking, User, YearlyReport } from "../../models/index.js";
 import { logger } from "../../config/logger.js";
 import { env } from "../../config/env.js";
 import { NotificationService } from "../notifications/service.js";
 import { DEFAULT_RULES } from "../rules/engine.js";
-import { writeAudit } from "../../middleware/audit.js";
+import { withTransaction, writeAudit } from "../../middleware/audit.js";
 import { processDocument } from "../ai/pipeline.js";
+import { evaluateCasePipeline } from "../cases/pipeline.js";
+import { stageOverdueScanner } from "../applications/overdueStageWorker.js";
+import { recordApplicationIncident } from "../admin/incidents/service.js";
 import { createAlertKey, obligationReminderLevel } from "../../engine/timeRules.js";
 
+export { stageOverdueScanner };
+
 const DAY = 86_400_000;
+const YEARLY_REPORT_REMINDER_DAYS = new Set([90, 60, 30, 15, 7, 1]);
+const ADMIN_STAGE_DELAY_ESCALATION_DAYS = 3;
+
+export function yearlyReportReminderLevel(daysLeft) {
+  if (!Number.isInteger(daysLeft)) return null;
+  if (daysLeft < 0) return "overdue";
+  return YEARLY_REPORT_REMINDER_DAYS.has(daysLeft) ? `T${daysLeft}` : null;
+}
+
+export function deadlineReminderLevel(daysLeft) {
+  if (!Number.isInteger(daysLeft)) return null;
+  if (daysLeft < 0) return "overdue";
+  if ([90, 60, 30, 15, 7, 1].includes(daysLeft)) return `T${daysLeft}`;
+  if (daysLeft === 0) return "due";
+  return null;
+}
+
+export function grievanceEscalationRoles(overdueDays) {
+  if (!Number.isInteger(overdueDays) || overdueDays < 3) return [];
+  return overdueDays >= 7 ? ["BUREAU_OFFICER", "SENIOR_AUTHORITY"] : ["BUREAU_OFFICER"];
+}
+
+export function regionalEscalationFilter(region, overdueDays) {
+  const roles = grievanceEscalationRoles(overdueDays);
+  if (!roles.length || typeof region !== "string" || !region.trim()) return null;
+  return { role: { $in: roles }, region: region.trim(), status: "ACTIVE", deleted_at: null };
+}
+
+async function regionalEscalationUsers(institutionId, overdueDays, entity) {
+  const filterRoles = grievanceEscalationRoles(overdueDays);
+  if (!filterRoles.length) return [];
+  const institution = await Institution.findById(institutionId).select("region").lean();
+  const filter = regionalEscalationFilter(institution?.region, overdueDays);
+  if (!filter) {
+    logger.warn({ entity, institutionId: String(institutionId || ""), overdueDays }, "Overdue reminder escalation skipped because institution region is unavailable");
+    return [];
+  }
+  return User.find(filter).select("_id role").lean();
+}
 
 function istDateParts(value) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: env.TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
@@ -47,6 +91,7 @@ async function notifyUser(userId, type, subject, body, key, sms = false, extra =
 async function stageDelayScanner(now) {
   let scanned = 0;
   const applications = await Application.find({ status: "IN_PROGRESS", deleted_at: null }).lean();
+  const administrators = await User.find({ role: "ADMIN", status: "ACTIVE", deleted_at: null }).select("_id name").lean();
   for (const application of applications) {
     const config = await StageConfig.findOne({ application_type: application.type, stage: application.current_stage, enabled: true }).lean();
     const maxDays = config?.max_days ?? DEFAULT_RULES.W6.params.maxDaysByStage[application.current_stage];
@@ -54,20 +99,97 @@ async function stageDelayScanner(now) {
     scanned += 1;
     const delayDays = Math.floor((now.getTime() - application.stage_entered_at.getTime()) / DAY);
     const baseKey = `stage-delay:${application._id}:${application.current_stage}:${application.stage_entered_at.toISOString()}`;
-    const recipient = application.assigned_officer_id || (await User.findOne({ role: config?.role_responsible || "SCRUTINY_OFFICER", status: "ACTIVE" }).select("_id"))?._id;
-    if (!recipient) continue;
+    let responsibleUser = application.assigned_officer_id
+      ? await User.findOne({ _id: application.assigned_officer_id, status: "ACTIVE", deleted_at: null }).select("_id name role").lean()
+      : null;
+    if (!responsibleUser) {
+      const institution = await Institution.findById(application.institution_id).select("region").lean();
+      responsibleUser = await User.findOne({
+        role: config?.role_responsible || "SCRUTINY_OFFICER",
+        status: "ACTIVE",
+        deleted_at: null,
+        ...(institution?.region ? { region: institution.region } : {}),
+      })
+        .select("_id name role").lean();
+    }
+    const recipient = responsibleUser?._id || null;
     const caseId = application.application_number || application._id.toString();
+    const responsibleName = responsibleUser?.name || "Unassigned (no active owner resolved)";
+    const responsibleRole = responsibleUser?.role || config?.role_responsible || "Unknown";
+    const delayDescription = [
+      `Application ${caseId} is overdue at stage ${application.current_stage}.`,
+      `Assigned responsible user: ${responsibleName} (${responsibleRole}).`,
+      `Configured due date: ${new Date(application.stage_entered_at.getTime() + maxDays * DAY).toISOString()}.`,
+      `Configured target: ${maxDays} day(s); elapsed: ${delayDays} day(s).`,
+      "This identifies the assigned owner of the overdue work; it does not determine individual fault.",
+    ].join(" ");
+    await recordApplicationIncident({
+      workflowType: "LEGACY_APPLICATION",
+      applicationId: String(application._id),
+      dedupeKey: `stage-delay:${application.current_stage}:${application.stage_entered_at.toISOString()}`,
+      type: "STAGE_DELAY",
+      severity: delayDays >= maxDays + ADMIN_STAGE_DELAY_ESCALATION_DAYS ? "HIGH" : "MEDIUM",
+      summary: `${application.current_stage} is overdue for ${caseId}`,
+      details: delayDescription,
+      stageKey: application.current_stage,
+      stageName: application.current_stage,
+      responsibleOfficerId: recipient ? String(recipient) : null,
+      responsibleOfficerName: responsibleName,
+      responsibleOfficerRole: responsibleRole,
+      detectedAt: new Date(application.stage_entered_at.getTime() + maxDays * DAY),
+      dueAt: new Date(application.stage_entered_at.getTime() + maxDays * DAY),
+    });
+    if (!recipient && administrators.length === 0) {
+      logger.warn({ applicationId: String(application._id), stage: application.current_stage }, "Overdue incident recorded but no active notification recipient could be resolved");
+    }
+    if (delayDays >= maxDays + ADMIN_STAGE_DELAY_ESCALATION_DAYS) for (const administrator of administrators) {
+      const key = `${baseKey}:admin-review:${administrator._id}`;
+      const created = await alertOnce({
+        key,
+        userId: administrator._id,
+        appId: application._id,
+        type: "STAGE_DELAY_ADMIN_REVIEW",
+        title: `Stage delay requires Admin review: ${caseId}`,
+        body: delayDescription,
+        severity: "HIGH",
+      });
+      if (!created) continue;
+      await writeAudit({
+        actor_id: null,
+        action: "STAGE_DELAY_ADMIN_REVIEW",
+        entity: "Application",
+        entity_id: application._id,
+        after_json: {
+          stage: application.current_stage,
+          responsibleUserId: recipient ? String(recipient) : null,
+          responsibleUserName: responsibleName,
+          responsibleUserRole: responsibleRole,
+          delayDays,
+          notifiedAdminId: String(administrator._id),
+        },
+      });
+      await notifyUser(
+        administrator._id,
+        "STAGE_DELAY_ADMIN_REVIEW",
+        `Stage delay requires Admin review: ${caseId}`,
+        delayDescription,
+        key,
+        false,
+        { application_id: application._id, caseId },
+      );
+    }
+    if (!recipient) continue;
     if (delayDays < maxDays + 3) {
-      const created = await alertOnce({ key: `${baseKey}:first-reminder`, userId: recipient, appId: application._id, type: "STAGE_DELAY_FIRST_REMINDER", title: "Application stage is delayed", body: `${caseId} has remained in ${application.current_stage} beyond its configured ${maxDays}-day target.` });
+      const created = await alertOnce({ key: `${baseKey}:first-reminder`, userId: recipient, appId: application._id, type: "STAGE_DELAY_FIRST_REMINDER", title: "Application stage is delayed", body: delayDescription });
       if (created) {
         await StageHistory.create({ application_id: application._id, from_stage: application.current_stage, to_stage: application.current_stage, actor_id: null, reason: "System sent the first configured stage-delay reminder." });
-        await writeAudit({ actor_id: null, action: "STAGE_DELAY_FIRST_REMINDER", entity: "Application", entity_id: application._id, after_json: { stage: application.current_stage, delayDays } });
-        await notifyUser(recipient, "STAGE_DELAY_FIRST_REMINDER", "Application stage is delayed", `${caseId} has remained in ${application.current_stage} beyond its configured ${maxDays}-day target.`, `${baseKey}:first`, false, { application_id: application._id, caseId });
+        await writeAudit({ actor_id: null, action: "STAGE_DELAY_FIRST_REMINDER", entity: "Application", entity_id: application._id, after_json: { stage: application.current_stage, responsibleUserId: String(recipient), responsibleUserName: responsibleName, delayDays } });
+        await notifyUser(recipient, "STAGE_DELAY_FIRST_REMINDER", "Application stage is delayed", delayDescription, `${baseKey}:first`, false, { application_id: application._id, caseId });
       }
       continue;
     }
     if (delayDays < maxDays + 6) {
-      const created = await alertOnce({ key: `${baseKey}:reason-required`, userId: recipient, appId: application._id, type: "STAGE_DELAY_REASON_REQUIRED", title: "Reason required for delayed stage", body: `Please record a reason for the ${application.current_stage} delay on ${caseId}.`, dueAt: new Date(application.stage_entered_at.getTime() + (maxDays + 6) * DAY) });
+      const created = await alertOnce({ key: `${baseKey}:reason-required`, userId: recipient, appId: application._id, type: "STAGE_DELAY_REASON_REQUIRED", title: "Reason required for delayed stage", body: `${delayDescription} Please record the reason for the delay.`, dueAt: new Date(application.stage_entered_at.getTime() + (maxDays + 6) * DAY) });
       if (created) {
         await StageHistory.create({ application_id: application._id, from_stage: application.current_stage, to_stage: application.current_stage, actor_id: null, reason: "System requested a recorded reason for a delayed stage." });
         await writeAudit({ actor_id: null, action: "STAGE_DELAY_REASON_REQUESTED", entity: "Application", entity_id: application._id, after_json: { stage: application.current_stage, delayDays } });
@@ -170,7 +292,8 @@ async function undertakingReportScanner(now) {
     const application = await Application.findById(item.application_id).lean();
     if (!application) continue;
     const daysLeft = istDaysBetween(item.due_date, now);
-    if (daysLeft > 7) continue;
+    if (daysLeft >= 0 && !YEARLY_REPORT_REMINDER_DAYS.has(daysLeft)) continue;
+    if (daysLeft > 90) continue;
     scanned += 1;
     const recipient = await User.findOne({ institution_id: application.institution_id, role: "INSTITUTION", status: "ACTIVE" }).select("_id");
     if (!recipient) continue;
@@ -181,8 +304,8 @@ async function undertakingReportScanner(now) {
       daysLeft < 0 ? "Undertaking is overdue" : "Undertaking deadline approaching",
       `Case ${caseId}: ${item.title} is ${daysLeft < 0 ? "overdue" : `due in ${daysLeft} day(s)`}.`, key, daysLeft <= 3,
       { application_id: application._id, caseId });
-    if (daysLeft < -3) {
-      const escalations = await User.find({ role: { $in: ["BUREAU_OFFICER", "SENIOR_AUTHORITY"] }, status: "ACTIVE" }).select("_id");
+    if (daysLeft < 0) {
+      const escalations = await regionalEscalationUsers(application.institution_id, Math.max(0, -daysLeft), `undertaking:${item._id}`);
       for (const escalation of escalations) {
         await notifyUser(escalation._id, "UNDERTAKING_ESCALATION", "Undertaking remains overdue", `Case ${caseId}: ${item.title} remains overdue.`, `undertaking:${item._id}:escalation:${escalation._id}`, true, { application_id: application._id, caseId });
       }
@@ -191,7 +314,8 @@ async function undertakingReportScanner(now) {
   const reports = await YearlyReport.find({ status: { $in: ["DRAFT", "RETURNED", "OVERDUE"] } }).lean();
   for (const report of reports) {
     const daysLeft = istDaysBetween(report.due_date, now);
-    if (daysLeft > 7) continue;
+    const reminderLevel = yearlyReportReminderLevel(daysLeft);
+    if (!reminderLevel) continue;
     scanned += 1;
     let user;
     if (report.faculty_id) {
@@ -201,20 +325,125 @@ async function undertakingReportScanner(now) {
       user = await User.findOne({ institution_id: report.institution_id, role: "INSTITUTION", status: "ACTIVE" }).select("_id");
     }
     if (!user) continue;
-    const key = `yearly-report:${report._id}:${daysLeft < 0 ? "overdue" : `T${daysLeft}`}`;
+    const key = `yearly-report:${report._id}:${reminderLevel}`;
     if (daysLeft < 0) await YearlyReport.updateOne({ _id: report._id }, { $set: { status: "OVERDUE" } });
     await notifyUser(user._id, daysLeft < 0 ? "YEARLY_REPORT_OVERDUE" : "YEARLY_REPORT_REMINDER",
       daysLeft < 0 ? "Yearly report is overdue" : "Yearly report deadline approaching",
       `Your ${report.academic_year} yearly report is ${daysLeft < 0 ? "overdue" : `due in ${daysLeft} day(s)`}.`,
       key, daysLeft <= 3, {});
-    if (daysLeft < -3) {
-      const escalations = await User.find({ role: { $in: ["BUREAU_OFFICER", "SENIOR_AUTHORITY"] }, status: "ACTIVE" }).select("_id");
+    if (daysLeft < 0) {
+      let institutionId = report.institution_id;
+      if (!institutionId && report.faculty_id) {
+        institutionId = (await Faculty.findById(report.faculty_id).select("institution_id").lean())?.institution_id;
+      }
+      const escalations = await regionalEscalationUsers(institutionId, Math.max(0, -daysLeft), `yearly-report:${report._id}`);
       for (const escalation of escalations) {
-        await notifyUser(escalation._id, "YEARLY_REPORT_ESCALATION", "Yearly report remains overdue", `Academic year ${report.academic_year} report remains overdue.`, `yearly-report:${report._id}:escalation:${escalation._id}`, true, {});
+        await notifyUser(escalation._id, "YEARLY_REPORT_ESCALATION", "Yearly report remains overdue", `Academic year ${report.academic_year} report remains overdue.`, `yearly-report:${report._id}:escalation:${escalation._id}`, true, { institution_id: institutionId });
       }
     }
   }
   return { scanned };
+}
+
+async function grievanceAndInstitutionReportScanner(now) {
+  let scanned = 0;
+  let queued = 0;
+  const activeComplaintFilter = { status: { $in: ["SUBMITTED", "ACKNOWLEDGED", "IN_REVIEW"] } };
+  const [activeComplaints, invalidComplaintDeadlines] = await Promise.all([
+    Complaint.find({ ...activeComplaintFilter, response_due_at: { $type: "date" } }).lean(),
+    Complaint.countDocuments({ ...activeComplaintFilter, response_due_at: { $not: { $type: "date" } } }),
+  ]);
+  if (invalidComplaintDeadlines) logger.warn({ count: invalidComplaintDeadlines }, "Grievance reminders skipped records with invalid response deadlines");
+  for (const complaint of activeComplaints) {
+    const daysLeft = istDaysBetween(complaint.response_due_at, now);
+    const level = deadlineReminderLevel(daysLeft);
+    if (!level) continue;
+    scanned += 1;
+    const recipients = new Set([complaint.assigned_to?.toString()].filter(Boolean));
+    if (level === "overdue" || level === "T1" || level === "due") {
+      const institutionUser = await User.findOne({ institution_id: complaint.institution_id, role: "INSTITUTION", status: "ACTIVE", deleted_at: null }).select("_id").lean();
+      if (institutionUser) recipients.add(institutionUser._id.toString());
+    }
+    if (level === "overdue") {
+      const escalationRoles = grievanceEscalationRoles(Math.max(0, -daysLeft));
+      if (escalationRoles.length) {
+        const escalationUsers = await User.find({ role: { $in: escalationRoles }, region: complaint.region, status: "ACTIVE", deleted_at: null }).select("_id role").lean();
+        escalationUsers.forEach((user) => recipients.add(user._id.toString()));
+      }
+    }
+    const overdueDays = Math.max(0, -daysLeft);
+    for (const recipientId of recipients) {
+      const userId = recipientId;
+      const isEscalation = level === "overdue" && (await User.exists({ _id: userId, role: { $in: ["BUREAU_OFFICER", "SENIOR_AUTHORITY"] } }));
+      const type = isEscalation ? "GRIEVANCE_RESPONSE_ESCALATION" : level === "overdue" ? "GRIEVANCE_RESPONSE_OVERDUE" : "GRIEVANCE_RESPONSE_REMINDER";
+      const body = isEscalation
+        ? `Complaint ${complaint._id} is ${overdueDays} day(s) overdue; escalation review is required.`
+        : level === "overdue"
+          ? `Complaint ${complaint._id} is ${overdueDays} day(s) overdue for its 15-day institutional response target.`
+          : `Complaint ${complaint._id} requires a response by ${new Date(complaint.response_due_at).toLocaleDateString("en-IN")}.`;
+      await notifyUser(userId, type, isEscalation ? "Overdue grievance escalated" : level === "overdue" ? "Grievance response deadline missed" : "Grievance response deadline approaching",
+        body, `grievance:${complaint._id}:${level}:${userId}`, level === "overdue", { complaint_id: complaint._id });
+      queued += 1;
+    }
+  }
+
+  const activeAppeals = await Complaint.find({ appeal_status: { $in: ["SUBMITTED", "IN_REVIEW"] }, appeal_due_at: { $type: "date" } }).lean();
+  for (const appeal of activeAppeals) {
+    const daysLeft = istDaysBetween(appeal.appeal_due_at, now);
+    const level = deadlineReminderLevel(daysLeft);
+    if (!level) continue;
+    scanned += 1;
+    const recipients = new Set([appeal.appeal_assigned_to?.toString()].filter(Boolean));
+    if (level === "overdue") {
+      const institution = await Institution.findById(appeal.institution_id).select("region").lean();
+      const escalationRoles = grievanceEscalationRoles(Math.max(0, -daysLeft));
+      if (escalationRoles.length) {
+        const escalationUsers = await User.find({ role: { $in: escalationRoles }, region: institution?.region, status: "ACTIVE", deleted_at: null }).select("_id").lean();
+        escalationUsers.forEach((user) => recipients.add(user._id.toString()));
+      }
+    }
+    for (const userId of recipients) {
+      await notifyUser(userId, level === "overdue" ? "GRIEVANCE_APPEAL_OVERDUE" : "GRIEVANCE_APPEAL_REMINDER",
+        level === "overdue" ? "Ombudsperson decision deadline missed" : "Ombudsperson decision deadline approaching",
+        `Student appeal ${appeal._id} has a 30-day decision target${level === "overdue" ? " that is overdue" : ` due ${new Date(appeal.appeal_due_at).toLocaleDateString("en-IN")}`}.`,
+        `grievance-appeal:${appeal._id}:${level}:${userId}`, level === "overdue", { complaint_id: appeal._id });
+      queued += 1;
+    }
+  }
+
+  const [institutionReports, invalidReportDeadlines] = await Promise.all([
+    InstitutionAnnualReport.find({ status: "DRAFT", due_date: { $type: "date" } }).lean(),
+    InstitutionAnnualReport.countDocuments({ status: "DRAFT", due_date: { $not: { $type: "date" } } }),
+  ]);
+  if (invalidReportDeadlines) logger.warn({ count: invalidReportDeadlines }, "Institutional report reminders skipped records with invalid deadlines");
+  for (const report of institutionReports) {
+    const daysLeft = istDaysBetween(report.due_date, now);
+    const level = deadlineReminderLevel(daysLeft);
+    if (!level) continue;
+    scanned += 1;
+    const institutionUser = await User.findOne({ institution_id: report.institution_id, role: "INSTITUTION", status: "ACTIVE", deleted_at: null }).select("_id").lean();
+    const reportRecipients = new Set([institutionUser?._id.toString()].filter(Boolean));
+    const overdueDays = Math.max(0, -daysLeft);
+    if (level === "overdue") {
+      const roles = grievanceEscalationRoles(overdueDays);
+      if (roles.length) {
+        const institution = await Institution.findById(report.institution_id).select("region").lean();
+        const escalationUsers = await User.find({ role: { $in: roles }, ...(institution?.region ? { region: institution.region } : {}), status: "ACTIVE", deleted_at: null }).select("_id").lean();
+        escalationUsers.forEach((user) => reportRecipients.add(user._id.toString()));
+      }
+    }
+    for (const recipientId of reportRecipients) {
+      const isEscalation = level === "overdue" && await User.exists({ _id: recipientId, role: { $in: ["BUREAU_OFFICER", "SENIOR_AUTHORITY"] } });
+      const type = isEscalation ? "INSTITUTION_IC_REPORT_ESCALATION" : level === "overdue" ? "INSTITUTION_IC_REPORT_OVERDUE" : "INSTITUTION_IC_REPORT_REMINDER";
+      const message = isEscalation
+        ? `The ${report.calendar_year} institutional Internal Committee annual report is ${overdueDays} day(s) overdue; escalation review is required.`
+        : `The ${report.calendar_year} institutional Internal Committee annual report is ${level === "overdue" ? "overdue" : `due ${new Date(report.due_date).toLocaleDateString("en-IN")}`}.`;
+      await notifyUser(recipientId, type, isEscalation ? "Overdue Internal Committee report escalated" : level === "overdue" ? "Internal Committee annual report overdue" : "Internal Committee annual report deadline approaching",
+        message, `institution-ic-report:${report._id}:${level}:${recipientId}`, level === "overdue", {});
+      queued += 1;
+    }
+  }
+  return { scanned, queued };
 }
 
 async function visitReminderScanner(now) {
@@ -270,9 +499,35 @@ async function documentProcessingScanner(now) {
     { status: "PROCESSING", updatedAt: { $lt: staleBefore } },
     { $set: { status: "AI_FAILED" } },
   );
+  const staleRuns = await ProcessingRun.updateMany(
+    { status: "processing", startedAt: { $lt: staleBefore } },
+    { $set: { status: "failed", errorCode: "PROCESSING_TIMEOUT", completedAt: now } },
+  );
   const pending = await Document.find({ status: "UPLOADED" }).select("_id").limit(20).lean();
   for (const document of pending) await processDocument(document._id);
-  return { staleRecovered: stale.modifiedCount, processed: pending.length };
+  return { staleRecovered: stale.modifiedCount, staleRunsFailed: staleRuns.modifiedCount, processed: pending.length };
+}
+
+async function casePipelineScanner(now) {
+  const cursor = CaseRecord.find({
+    status: { $in: ["submitted", "in_progress", "returned"] },
+    deletedAt: null,
+  }).select("_id").cursor({ batchSize: 100 });
+  let scanned = 0;
+  let failed = 0;
+  for await (const record of cursor) {
+    scanned += 1;
+    try {
+      await evaluateCasePipeline({ caseId: record._id, intent: "CHANGE", apply: true, now });
+    } catch (error) {
+      failed += 1;
+      logger.error({
+        caseId: record._id.toString(),
+        code: error.code || "CASE_PIPELINE_TICK_FAILED",
+      }, "Scheduled case pipeline reevaluation failed");
+    }
+  }
+  return { scanned, failed };
 }
 
 async function obligationScanner(now) {
@@ -374,12 +629,15 @@ async function weeklyDigest() {
 
 export const jobHandlers = Object.freeze({
   stageDelayScanner,
+  stageOverdueScanner,
   leaseExpiryScanner,
   pendingInstitutionScanner,
   undertakingReportScanner,
+  grievanceAndInstitutionReportScanner,
   visitReminderScanner,
   notificationWorker: (now) => NotificationService.processDue({ now }),
   documentProcessingScanner,
+  casePipelineScanner,
   obligationScanner,
   complianceRecompute,
   sessionCleanup,

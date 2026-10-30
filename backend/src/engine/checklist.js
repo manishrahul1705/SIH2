@@ -157,5 +157,5 @@ export function buildChecklist(applicationType, answers = {}, slotRecords = [], 
 }
 
 export function missingChecklistItems(checklist) {
-  return checklist.filter((slot) => slot.required && ["missing", "uploaded", "pending_confirmation", "rejected", "expired"].includes(slot.status));
+  return checklist.filter((slot) => slot.required && ["missing", "quarantined"].includes(slot.status));
 }

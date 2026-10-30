@@ -9,6 +9,17 @@ const yearlyReportSchema = new mongoose.Schema({
   status: { type: String, enum: ["DRAFT", "SUBMITTED", "RETURNED", "APPROVED", "OVERDUE"], default: "DRAFT", index: true },
   submitted_at: { type: Date, default: null },
   report_data: { type: mongoose.Schema.Types.Mixed, default: {} },
+  evidence: {
+    type: [{
+      file_name: { type: String, required: true, maxlength: 180 },
+      mime_type: { type: String, enum: ["application/pdf", "image/jpeg", "image/png"], required: true },
+      size: { type: Number, required: true, min: 1, max: 15 * 1024 * 1024 },
+      sha256: { type: String, required: true, match: /^[a-f\d]{64}$/ },
+      storage_path: { type: String, required: true, select: false },
+      uploaded_at: { type: Date, default: Date.now },
+    }],
+    default: [],
+  },
 }, baseOptions);
 
 yearlyReportSchema.index(

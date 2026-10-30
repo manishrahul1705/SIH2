@@ -12,10 +12,10 @@ async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info({ signal }, "Graceful shutdown started");
-  await scheduler?.stop();
   if (server) {
     await new Promise((resolve) => server.close(resolve));
   }
+  await scheduler?.stop();
   await disconnectDatabase();
   process.exit(0);
 }
@@ -23,7 +23,7 @@ async function shutdown(signal) {
 try {
   await connectDatabase();
   const app = createApp();
-  scheduler = startScheduler();
+  scheduler = await startScheduler();
   server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT }, "ApprovalTrack API listening");
   });

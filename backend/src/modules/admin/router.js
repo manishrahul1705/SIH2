@@ -1,11 +1,12 @@
 import express from "express";
+import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { APPLICATION_STAGES, APPLICATION_TYPES, ROLES } from "../../config/constants.js";
 import { authenticate, requireRole } from "../../middleware/auth.js";
-import { verifyAuditEntries, writeAudit } from "../../middleware/audit.js";
+import { verifyAuditEntries, withTransaction, writeAudit } from "../../middleware/audit.js";
 import { validate } from "../../middleware/validate.js";
-import { AuditHead, AuditLog, Institution, NotificationJob, NotificationLog, RuleConfig, StageConfig, User } from "../../models/index.js";
+import { AuditHead, AuditLog, Institution, NotificationJob, NotificationLog, OutboxEvent, RuleConfig, StageConfig, User } from "../../models/index.js";
 import { runJob, jobHandlers } from "../jobs/run.js";
 import { DEFAULT_RULES } from "../rules/engine.js";
 
@@ -61,6 +62,31 @@ function isDuplicate(error) {
   return error?.code === 11000;
 }
 
+async function recordAdminMutation(req, { actorId, action, entity, eventType, mutate, before, payload }) {
+  return withTransaction(async (session) => {
+    const record = await mutate(session);
+    if (!record) return null;
+    const eventPayload = typeof payload === "function" ? payload(record) : payload;
+    await OutboxEvent.create([{
+      eventId: randomUUID(),
+      eventType,
+      entityId: String(record._id),
+      payload: eventPayload,
+      publishedAt: null,
+    }], { session });
+    await writeAudit({
+      actor_id: actorId,
+      action,
+      entity,
+      entity_id: record._id,
+      ...(typeof before === "function" ? { before_json: before(record) } : before ? { before_json: before } : {}),
+      after_json: eventPayload,
+      ip: req.ip,
+    }, { session });
+    return record;
+  });
+}
+
 export function adminRouter() {
   const router = express.Router();
   const adminOnly = [authenticate, requireRole("ADMIN")];
@@ -81,13 +107,31 @@ export function adminRouter() {
         if (!req.body.institution_id) return res.status(400).json({ data: null, error: { code: "INSTITUTION_REQUIRED", message: "This account role must be linked to an institution" }, meta: { requestId: req.id } });
         if (!await Institution.exists({ _id: req.body.institution_id, deleted_at: null })) return res.status(404).json({ data: null, error: { code: "INSTITUTION_NOT_FOUND", message: "Institution not found" }, meta: { requestId: req.id } });
       }
+      if (req.body.role === "GRIEVANCE_OFFICER") {
+        if (!req.body.institution_id) return res.status(400).json({ data: null, error: { code: "INSTITUTION_REQUIRED", message: "A grievance officer must be linked to an institution" }, meta: { requestId: req.id } });
+        if (!await Institution.exists({ _id: req.body.institution_id, deleted_at: null })) return res.status(404).json({ data: null, error: { code: "INSTITUTION_NOT_FOUND", message: "Institution not found" }, meta: { requestId: req.id } });
+      }
+      if (["OMBUDSPERSON", "UNIVERSITY_DTE_OFFICER"].includes(req.body.role) && !req.body.region.trim()) {
+        return res.status(400).json({ data: null, error: { code: "REGION_REQUIRED", message: "This grievance appeal role must be scoped to a region" }, meta: { requestId: req.id } });
+      }
       const { default: argon2 } = await import("argon2");
-      const user = await User.create({
-        ...req.body,
-        email: req.body.email.toLowerCase(),
-        password_hash: await argon2.hash(req.body.password, { type: argon2.argon2id }),
+      const { password, ...userFields } = req.body;
+      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+      const user = await recordAdminMutation(req, {
+        actorId: req.user._id,
+        action: "ADMIN_USER_CREATED",
+        entity: "User",
+        eventType: "admin.user_created",
+        mutate: async (session) => {
+          const [created] = await User.create([{
+            ...userFields,
+            email: userFields.email.toLowerCase(),
+            password_hash: passwordHash,
+          }], { session });
+          return created;
+        },
+        payload: (record) => ({ role: record.role, email: record.email, institutionId: record.institution_id?.toString() || null, region: record.region }),
       });
-      await writeAudit({ actor_id: req.user._id, action: "ADMIN_USER_CREATED", entity: "User", entity_id: user._id, after_json: { role: user.role, email: user.email }, ip: req.ip });
       return send(res, req, { id: user._id, role: user.role, email: user.email }, {}, 201);
     } catch (error) {
       if (isDuplicate(error)) return res.status(409).json({ data: null, error: { code: "EMAIL_ALREADY_EXISTS", message: "An account with this email already exists" }, meta: { requestId: req.id } });
@@ -96,12 +140,24 @@ export function adminRouter() {
   });
   router.patch("/users/:id/status", adminOnly, validate(z.object({ id }).strict(), "params"), validate(z.object({ status: z.enum(["ACTIVE", "PENDING_VERIFICATION", "LOCKED", "DISABLED"]) }).strict()), async (req, res, next) => {
     try {
-      const user = await User.findById(req.params.id);
-      if (!user || user.deleted_at) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "User not found" }, meta: { requestId: req.id } });
-      const before = user.status;
-      user.status = req.body.status;
-      await user.save();
-      await writeAudit({ actor_id: req.user._id, action: "ADMIN_USER_STATUS_CHANGED", entity: "User", entity_id: user._id, before_json: { status: before }, after_json: { status: user.status }, ip: req.ip });
+      let before;
+      const user = await recordAdminMutation(req, {
+        actorId: req.user._id,
+        action: "ADMIN_USER_STATUS_CHANGED",
+        entity: "User",
+        eventType: "admin.user_status_changed",
+        mutate: async (session) => {
+          const current = await User.findById(req.params.id).session(session);
+          if (!current || current.deleted_at) return null;
+          before = { status: current.status };
+          current.status = req.body.status;
+          await current.save({ session });
+          return current;
+        },
+        before: () => before,
+        payload: (record) => ({ status: record.status }),
+      });
+      if (!user) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "User not found" }, meta: { requestId: req.id } });
       return send(res, req, { id: user._id, status: user.status });
     } catch (error) { return next(error); }
   });
@@ -118,8 +174,17 @@ export function adminRouter() {
   });
   router.post("/institutions", adminOnly, validate(institutionSchema), async (req, res, next) => {
     try {
-      const institution = await Institution.create({ ...req.body, aicte_id: req.body.aicte_id.toUpperCase() });
-      await writeAudit({ actor_id: req.user._id, action: "INSTITUTION_CREATED", entity: "Institution", entity_id: institution._id, after_json: institution.toObject(), ip: req.ip });
+      const institution = await recordAdminMutation(req, {
+        actorId: req.user._id,
+        action: "INSTITUTION_CREATED",
+        entity: "Institution",
+        eventType: "admin.institution_created",
+        mutate: async (session) => {
+          const [created] = await Institution.create([{ ...req.body, aicte_id: req.body.aicte_id.toUpperCase() }], { session });
+          return created;
+        },
+        payload: (record) => ({ aicteId: record.aicte_id, name: record.name, state: record.state, region: record.region }),
+      });
       return send(res, req, institution, {}, 201);
     } catch (error) {
       if (isDuplicate(error)) return res.status(409).json({ data: null, error: { code: "INSTITUTION_ID_EXISTS", message: "AICTE institution ID already exists" }, meta: { requestId: req.id } });
@@ -140,12 +205,23 @@ export function adminRouter() {
   router.patch("/rules/:ruleId", adminOnly, validate(z.object({ ruleId: z.string().min(1).max(60) }).strict(), "params"), validate(ruleSchema), async (req, res, next) => {
     try {
       if (!DEFAULT_RULES[req.params.ruleId]) return res.status(404).json({ data: null, error: { code: "UNKNOWN_RULE", message: "Rule is not registered" }, meta: { requestId: req.id } });
-      const saved = await RuleConfig.findOneAndUpdate(
-        { rule_id: req.params.ruleId },
-        { $set: { enabled: req.body.enabled, params_json: req.body.params_json, updated_by: req.user._id, basis: DEFAULT_RULES[req.params.ruleId].basis } },
-        { upsert: true, new: true, runValidators: true },
-      );
-      await writeAudit({ actor_id: req.user._id, action: "RULE_CONFIG_UPDATED", entity: "RuleConfig", entity_id: saved._id, after_json: saved.toObject(), ip: req.ip });
+      let before;
+      const saved = await recordAdminMutation(req, {
+        actorId: req.user._id,
+        action: "RULE_CONFIG_UPDATED",
+        entity: "RuleConfig",
+        eventType: "policy.rule_config_updated",
+        mutate: async (session) => {
+          before = await RuleConfig.findOne({ rule_id: req.params.ruleId }).session(session).lean();
+          return RuleConfig.findOneAndUpdate(
+            { rule_id: req.params.ruleId },
+            { $set: { enabled: req.body.enabled, params_json: req.body.params_json, updated_by: req.user._id, basis: DEFAULT_RULES[req.params.ruleId].basis } },
+            { upsert: true, new: true, runValidators: true, session },
+          );
+        },
+        before: () => before,
+        payload: (record) => ({ ruleId: record.rule_id, basis: record.basis, enabled: record.enabled, params: record.params_json }),
+      });
       return send(res, req, saved);
     } catch (error) { return next(error); }
   });
@@ -156,12 +232,32 @@ export function adminRouter() {
   });
   router.put("/stage-config", adminOnly, validate(stageConfigSchema), async (req, res, next) => {
     try {
-      const item = await StageConfig.findOneAndUpdate(
-        { application_type: req.body.application_type, stage: req.body.stage },
-        { $set: req.body },
-        { upsert: true, new: true, runValidators: true },
-      );
-      await writeAudit({ actor_id: req.user._id, action: "STAGE_CONFIG_UPDATED", entity: "StageConfig", entity_id: item._id, after_json: item.toObject(), ip: req.ip });
+      let before;
+      const item = await recordAdminMutation(req, {
+        actorId: req.user._id,
+        action: "STAGE_CONFIG_UPDATED",
+        entity: "StageConfig",
+        eventType: "policy.stage_config_updated",
+        mutate: async (session) => {
+          const filter = { application_type: req.body.application_type, stage: req.body.stage };
+          before = await StageConfig.findOne(filter).session(session).lean();
+          return StageConfig.findOneAndUpdate(
+            filter,
+            { $set: req.body },
+            { upsert: true, new: true, runValidators: true, session },
+          );
+        },
+        before: () => before,
+        payload: (record) => ({
+          applicationType: record.application_type,
+          stage: record.stage,
+          sequence: record.sequence,
+          roleResponsible: record.role_responsible,
+          maxDays: record.max_days,
+          enabled: record.enabled,
+          basis: record.basis,
+        }),
+      });
       return send(res, req, item);
     } catch (error) { return next(error); }
   });
@@ -207,13 +303,25 @@ export function adminRouter() {
   router.post("/notifications/:id/retry", adminOnly, validate(z.object({ id }).strict(), "params"), async (req, res, next) => {
     try {
       if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ data: null, error: { code: "INVALID_ID", message: "Invalid notification id" }, meta: { requestId: req.id } });
-      const job = await NotificationJob.findOneAndUpdate(
-        { _id: req.params.id, status: "FAILED" },
-        { $set: { status: "PENDING", run_at: new Date(), attempts: 0, last_error: "", locked_at: null } },
-        { new: true },
-      );
+      let before;
+      const job = await recordAdminMutation(req, {
+        actorId: req.user._id,
+        action: "NOTIFICATION_RETRY_REQUESTED",
+        entity: "NotificationJob",
+        eventType: "notification.retry_requested",
+        mutate: async (session) => {
+          const filter = { _id: req.params.id, status: "FAILED" };
+          before = await NotificationJob.findOne(filter).session(session).lean();
+          return NotificationJob.findOneAndUpdate(
+            filter,
+            { $set: { status: "PENDING", run_at: new Date(), attempts: 0, last_error: "", locked_at: null } },
+            { new: true, session },
+          );
+        },
+        before: () => before ? { status: before.status, attempts: before.attempts } : undefined,
+        payload: (record) => ({ status: record.status, attempts: record.attempts, channel: record.channel, type: record.type }),
+      });
       if (!job) return res.status(404).json({ data: null, error: { code: "RETRY_NOT_AVAILABLE", message: "Failed notification job not found" }, meta: { requestId: req.id } });
-      await writeAudit({ actor_id: req.user._id, action: "NOTIFICATION_RETRY_REQUESTED", entity: "NotificationJob", entity_id: job._id, ip: req.ip });
       return send(res, req, { id: job._id, status: job.status });
     } catch (error) { return next(error); }
   });

@@ -27,6 +27,7 @@ import argparse
 import importlib
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import date
@@ -144,8 +145,13 @@ def _builtin_read(path):
     raise RuntimeError(f"unsupported_file_type:{ext}")
 
 
-def read_document(path):
+def read_document(path, ocr_data=None):
     """Returns (pages, engine, quarantine_flag). Never raises for an unreadable file."""
+    if ocr_data is not None:
+        if isinstance(ocr_data, dict) and (ocr_data.get("quarantined") or ocr_data.get("quarantine")
+                                           or ocr_data.get("status") == "quarantined"):
+            return [], "precomputed_ocr", True
+        return normalise_pages(ocr_data), "precomputed_ocr", False
     raw, note = _read_with_project_ocr(path)
     if isinstance(raw, dict) and (raw.get("quarantined") or raw.get("quarantine")
                                   or raw.get("status") == "quarantined"):
@@ -184,6 +190,35 @@ def _filled(value, display, conf, cand, model_version, derived=False, extra=None
     return f
 
 
+_EXPLICIT_LEASE_CONTEXT = {
+    "lease_start": re.compile(
+        r"\b(?:lease\s+start(?:\s+date)?|lease\s+commencement\s+date|"
+        r"commencement\s+date|date\s+of\s+commencement|term\s+starts?\s+on)\s*[:=\-–—]*\s*$",
+        re.IGNORECASE,
+    ),
+    "lease_end": re.compile(
+        r"\b(?:lease\s+end(?:\s+date)?|lease\s+expiry\s+date|lease\s+expiration\s+date|"
+        r"(?:lease\s+)?(?:expiry|expiration)\s+date|valid\s+(?:until|through)|"
+        r"term\s+ends?\s+on)\s*[:=\-–—]*\s*$",
+        re.IGNORECASE,
+    ),
+}
+
+
+def _explicit_lease_candidate(candidates, role):
+    pattern = _EXPLICIT_LEASE_CONTEXT[role]
+    matches = [
+        candidate for candidate in candidates
+        if candidate.get("kind") == "date"
+        and not int(candidate.get("ambiguous", 0) or 0)
+        and pattern.search(str(candidate.get("left_ctx", "") or ""))
+    ]
+    values = {candidate.get("value") for candidate in matches}
+    if len(values) != 1:
+        return None
+    return matches[0]
+
+
 def _load_predictor():
     try:
         mod = importlib.import_module("m3_predict")
@@ -197,7 +232,7 @@ def _load_predictor():
 
 
 def build_result(path, doc_type, as_of, reminder_days, max_pages=MAX_PAGES_DEFAULT,
-                 with_candidates=False, predictor=None):
+                 with_candidates=False, predictor=None, ocr_data=None):
     result = {"schema": SCHEMA, "file": os.path.basename(path), "doc_type": doc_type,
               "banner": BANNER, "ocr_engine": "", "page_count": 0, "pages_scanned": 0,
               "model_loaded": False, "model_version": "none", "ok": True, "quarantined": False}
@@ -228,7 +263,7 @@ def build_result(path, doc_type, as_of, reminder_days, max_pages=MAX_PAGES_DEFAU
         result["ok"] = False
         return all_blank("not_a_lease", [])
 
-    pages, engine, quarantined = read_document(path)
+    pages, engine, quarantined = read_document(path, ocr_data)
     result["ocr_engine"] = engine
     if quarantined:
         result["ok"], result["quarantined"] = False, True
@@ -254,7 +289,15 @@ def build_result(path, doc_type, as_of, reminder_days, max_pages=MAX_PAGES_DEFAU
     result["model_loaded"] = True
     mv = str(pred.get("model_version", "unknown"))
     result["model_version"] = mv
-    roles = pred.get("roles", {})
+    roles = dict(pred.get("roles", {}))
+    for role in ("lease_start", "lease_end"):
+        candidate = _explicit_lease_candidate(cands, role)
+        if candidate is not None:
+            roles[role] = {
+                "candidate_id": candidate["cand_id"],
+                "confidence": 0.90,
+                "blank_reason": "",
+            }
     by_id = {c["cand_id"]: c for c in cands}
 
     def take(role):
@@ -339,8 +382,10 @@ def main():
     ap.add_argument("--reminder-days", type=int, default=DEFAULT_REMINDER_DAYS)
     ap.add_argument("--max-pages", type=int, default=MAX_PAGES_DEFAULT)
     ap.add_argument("--with-candidates", action="store_true")
+    ap.add_argument("--ocr-json-stdin", action="store_true")
     a = ap.parse_args()
-    out = build_result(a.file, a.doc_type, a.as_of, a.reminder_days, a.max_pages, a.with_candidates)
+    ocr_data = json.load(sys.stdin) if a.ocr_json_stdin else None
+    out = build_result(a.file, a.doc_type, a.as_of, a.reminder_days, a.max_pages, a.with_candidates, ocr_data=ocr_data)
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 

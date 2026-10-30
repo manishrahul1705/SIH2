@@ -1,0 +1,12 @@
+node_modules/
+.vite/
+dist/
+coverage/
+playwright-report/
+playwright/.cache/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log

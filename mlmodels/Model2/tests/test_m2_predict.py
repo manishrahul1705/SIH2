@@ -73,7 +73,7 @@ def test_output_schema_is_complete_and_requires_confirmation(monkeypatch):
         "needs_confirmation", "ai_suggested", "candidate_id", "model_version",
         "blank_reason", "why",
     }
-    for field in ("issue_date", "valid_to", "cert_no", "issuer"):
+    for field in ("issue_date", "valid_from", "valid_to", "cert_no", "issuer"):
         assert set(output[field]) == expected_keys
         assert all(value is not None for value in output[field].values())
         assert output[field]["needs_confirmation"] is True
@@ -179,10 +179,10 @@ def test_prediction_is_deterministic(monkeypatch):
     assert first == second
 
 
-def test_no_candidates_returns_four_blank_fields(monkeypatch):
+def test_no_candidates_returns_all_blank_fields(monkeypatch):
     _install_model(monkeypatch, _model())
     output = m2_predict.predict_fields([], "other")
-    assert set(output) == {"issue_date", "valid_to", "cert_no", "issuer"}
+    assert set(output) == {"issue_date", "valid_from", "valid_to", "cert_no", "issuer"}
     for item in output.values():
         assert item["value"] == ""
         assert item["confidence"] == 0.0

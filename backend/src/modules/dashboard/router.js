@@ -2,7 +2,8 @@ import express from "express";
 import { z } from "zod";
 import { authenticate, requireRole } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
-import { Alert, Application, Document, Faculty, Institution, LeaseDetail, PendingItem, Student, Undertaking, User, Visit, YearlyReport } from "../../models/index.js";
+import { Alert, AiExtraction, Application, CaseObligation, CaseRecord, Document, Faculty, Institution, LeaseDetail, PendingItem, Student, Undertaking, User, Visit, YearlyReport } from "../../models/index.js";
+import { computeActionScore, projectActionScore } from "../../engine/score.js";
 
 const roles = ["INSTITUTION", "SCRUTINY_OFFICER", "EVC", "SAC_SHC", "BUREAU_OFFICER", "SENIOR_AUTHORITY", "ADMIN"];
 
@@ -56,6 +57,48 @@ export function dashboardRouter() {
         activeStudents: students,
         activeFaculty: faculty,
         scheduledVisits: visits,
+      });
+    } catch (error) { return next(error); }
+  });
+  router.get("/action-score", requireRole("INSTITUTION"), async (req, res, next) => {
+    try {
+      const institutionId = req.user.institution_id || (await Institution.findOne({ contact_email: req.user.email }).select("_id"))?._id;
+      if (!institutionId) return res.status(409).json({ data: null, error: { code: "INSTITUTION_NOT_LINKED", message: "Link this account to an institution before viewing its score" }, meta: { requestId: req.id } });
+      const cases = await CaseRecord.find({ institutionId, deletedAt: null, status: { $nin: ["approved", "rejected"] } }).select("_id slotRecords preliminary").lean();
+      if (!cases.length) return respond(res, req, { assessmentComplete: false, current: computeActionScore({ assessmentComplete: false }), projected: projectActionScore({ assessmentComplete: false }, new Date(), 30), note: "No active case evidence is available for scoring." });
+      const caseIds = cases.map((record) => record._id);
+      const [obligations, docs] = await Promise.all([
+        CaseObligation.find({ institutionId, caseId: { $in: caseIds }, closure: "open" }).lean(),
+        Document.find({ case_id: { $in: caseIds }, status: "CONFIRMED" }).select("_id case_id doc_type_slot").lean(),
+      ]);
+      const documentIds = docs.map((document) => document._id);
+      const extractions = await AiExtraction.find({ document_id: { $in: documentIds } })
+        .select("document_id fields.field_name fields.confirmed_value")
+        .sort({ createdAt: -1 }).lean();
+      const extractionByDocument = new Map();
+      for (const extraction of extractions) if (!extractionByDocument.has(String(extraction.document_id))) extractionByDocument.set(String(extraction.document_id), extraction.fields || []);
+      const validityDocuments = docs.flatMap((document) => {
+        const validTo = extractionByDocument.get(String(document._id))?.find((field) => field.field_name === "valid_to")?.confirmed_value;
+        if (!validTo) return [];
+        return [{ id: String(document._id), validTo, acceptedRenewal: false }];
+      });
+      const assessmentComplete = cases.every((record) => ["complete_clean", "complete_with_findings"].includes(record.preliminary));
+      const facts = {
+        assessmentComplete,
+        obligations: obligations.filter((item) => item.type !== "evc").map((item) => ({
+          id: String(item._id), ownerType: item.ownerType, dueAt: item.dueAt, dueKind: item.dueKind, submission: item.submission,
+        })),
+        evcObligations: obligations.filter((item) => item.type === "evc").map((item) => ({
+          id: String(item._id), ownerType: item.ownerType, dueAt: item.dueAt, dueKind: item.dueKind,
+        })),
+        documents: validityDocuments,
+      };
+      return respond(res, req, {
+        assessmentComplete,
+        current: computeActionScore(facts),
+        projected: projectActionScore(facts, new Date(), 30),
+        assessedAt: new Date().toISOString(),
+        note: "Calculated from open, institution-owned obligations and human-confirmed document dates in active cases. Officer-owned waits are excluded.",
       });
     } catch (error) { return next(error); }
   });

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { mongoose } from "../models/db.js";
 import { AuditHead, AuditLog } from "../models/index.js";
@@ -5,6 +6,8 @@ import { logger } from "../config/logger.js";
 
 let transactionSupportPromise;
 let standaloneWarningLogged = false;
+let standaloneWriteQueue = Promise.resolve();
+const standaloneWriteContext = new AsyncLocalStorage();
 
 export function supportsMongoTransactions(hello) {
   return Boolean(hello?.setName || hello?.msg === "isdbgrid" || hello?.serviceId);
@@ -111,7 +114,10 @@ export async function withTransaction(callback) {
       logger.warn("Standalone MongoDB detected; multi-document workflows will use non-atomic writes");
       standaloneWarningLogged = true;
     }
-    return callback(undefined);
+    if (standaloneWriteContext.getStore()) return callback(undefined);
+    const execution = standaloneWriteQueue.then(() => standaloneWriteContext.run(true, () => callback(undefined)));
+    standaloneWriteQueue = execution.then(() => undefined, () => undefined);
+    return execution;
   }
 
   const session = await mongoose.startSession();

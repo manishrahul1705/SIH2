@@ -42,3 +42,28 @@ test("admin service writes account status and rule changes with CSRF headers", a
   assert.equal(calls[1].url, "http://localhost:4000/api/v1/admin/rules/D1");
   assert.deepEqual(JSON.parse(calls[1].options.body), { enabled: false, params_json: {} });
 });
+
+test("admin incident service preserves filters and uses authenticated incident actions", async (context) => {
+  const calls = [];
+  context.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ data: { applications: [], incidents: [] }, meta: { total: 0 } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+
+  await adminApi.listIncidents({ tab: "pending", page: 2, search: "AT-100", owner: "Officer A" });
+  await adminApi.createIncident({ workflowType: "LEGACY_APPLICATION", applicationId: "app-1", type: "MANUAL_REPORT" });
+  await adminApi.getApplicationIncidents("CASE_RECORD", "case/1");
+  await adminApi.actOnIncident("incident-1", { action: "RESOLVE", resolutionSummary: "Evidence verified and the stage is now complete." });
+
+  assert.match(calls[0].url, /\/admin\/incidents\?tab=pending&page=2&search=AT-100&owner=Officer\+A$/);
+  assert.equal(calls[1].url, "http://localhost:4000/api/v1/admin/incidents");
+  assert.equal(calls[1].options.method, "POST");
+  assert.equal(calls[2].url, "http://localhost:4000/api/v1/admin/incidents/CASE_RECORD/case%2F1");
+  assert.equal(calls[3].url, "http://localhost:4000/api/v1/admin/incidents/incident-1/actions");
+  assert.equal(calls[3].options.method, "POST");
+  assert.equal(calls[3].options.headers["X-Requested-With"], "XMLHttpRequest");
+  assert.equal(JSON.parse(calls[3].options.body).action, "RESOLVE");
+});

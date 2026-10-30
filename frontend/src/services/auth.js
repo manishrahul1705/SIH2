@@ -4,12 +4,16 @@ export const backendRoleToWorkspace = Object.freeze({
   INSTITUTION: "Institution user",
   SCRUTINY_OFFICER: "Scrutiny / Regional officer",
   EVC: "EVC member",
+  EVC_CHAIRMAN: "EVC chairman",
   SAC_SHC: "SAC/SHC member",
   BUREAU_OFFICER: "Competent authority",
   SENIOR_AUTHORITY: "Senior authority",
   ADMIN: "Admin",
   STUDENT: "Student",
   FACULTY: "Faculty",
+  GRIEVANCE_OFFICER: "Grievance officer",
+  OMBUDSPERSON: "Ombudsperson",
+  UNIVERSITY_DTE_OFFICER: "University/DTE Officer",
 });
 
 export function workspaceRoleFor(user) {

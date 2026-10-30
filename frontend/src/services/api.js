@@ -118,6 +118,9 @@ export const api = {
         get("/policies").then((items) => ["policyVersions", items]),
       );
     }
+    if (role === "INSTITUTION") {
+      optionalLists.push(get("/dashboard/action-score").then((score) => ["actionScore", score]));
+    }
     if (["BUREAU_OFFICER", "SENIOR_AUTHORITY", "ADMIN"].includes(role)) {
       optionalLists.push(get("/dashboard/analytics").then((analytics) => ["analytics", analytics]));
     }
@@ -171,6 +174,7 @@ export const api = {
         openAlerts: overview.openAlerts,
       },
       analytics: optional.analytics || null,
+      actionScore: optional.actionScore || null,
     };
   },
 };

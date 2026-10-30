@@ -48,3 +48,47 @@ test("yearly report errors are surfaced to the caller", async (context) => {
   }));
   await assert.rejects(stakeholderApi.getYearlyReports(), /Faculty profile not found/);
 });
+
+test("complaints and announcements use authenticated API routes", async (context) => {
+  const calls = [];
+  context.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, json: async () => ({ data: { _id: "created" } }) };
+  });
+  await stakeholderApi.createComplaint({ category: "FEES", subject: "Fee issue", description: "A sufficiently detailed complaint description." });
+  await stakeholderApi.getComplaints();
+  await stakeholderApi.getAnnouncements();
+  await stakeholderApi.createAnnouncement({ title: "Notice title", body: "Announcement body with sufficient length." });
+  assert.equal(calls[0].url, "http://localhost:4000/api/v1/complaints");
+  assert.equal(calls[0].options.credentials, "include");
+  assert.equal(calls[1].url, "http://localhost:4000/api/v1/complaints?page=1&pageSize=100");
+  assert.equal(calls[2].url, "http://localhost:4000/api/v1/announcements?page=1&pageSize=50");
+  assert.equal(calls[3].url, "http://localhost:4000/api/v1/announcements");
+});
+
+test("grievance portals use role-scoped endpoints and submit institution replies as multipart data", async (context) => {
+  const calls = [];
+  context.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, json: async () => ({ data: [] }) };
+  });
+  await stakeholderApi.getMyComplaints();
+  await stakeholderApi.getComplaintInstitutions();
+  await stakeholderApi.getAdminComplaintSummary();
+  await stakeholderApi.getAdminCollegeComplaints("college-id");
+  await stakeholderApi.acknowledgeComplaint("complaint-id", "Please respond.", true);
+  await stakeholderApi.getInstitutionComplaints();
+  await stakeholderApi.replyToComplaint("complaint-id", "We have completed the action.", new Blob(["proof"]));
+
+  assert.equal(calls[0].url, "http://localhost:4000/api/v1/complaints/my-complaints?page=1&pageSize=100");
+  assert.equal(calls[1].url, "http://localhost:4000/api/v1/complaints/institutions");
+  assert.equal(calls[2].url, "http://localhost:4000/api/v1/complaints/admin/colleges-summary");
+  assert.equal(calls[3].url, "http://localhost:4000/api/v1/complaints/admin/colleges/college-id");
+  assert.equal(calls[4].url, "http://localhost:4000/api/v1/complaints/admin/complaint-id/acknowledge");
+  assert.equal(calls[4].options.method, "POST");
+  assert.deepEqual(JSON.parse(calls[4].options.body), { admin_remarks: "Please respond.", evidence_reviewed: true });
+  assert.equal(calls[5].url, "http://localhost:4000/api/v1/complaints/institution/my-college?page=1&pageSize=100");
+  assert.equal(calls[6].url, "http://localhost:4000/api/v1/complaints/institution/complaint-id/reply");
+  assert.ok(calls[6].options.body instanceof FormData);
+  assert.equal(calls[6].options.headers["Content-Type"], undefined);
+});

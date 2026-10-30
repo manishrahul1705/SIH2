@@ -22,6 +22,9 @@ import { institutionsRouter } from "./modules/institutions/router.js";
 import { adminRouter } from "./modules/admin/router.js";
 import { dashboardRouter } from "./modules/dashboard/router.js";
 import { casesRouter } from "./modules/cases/router.js";
+import { stakeholdersRouter } from "./modules/stakeholders/router.js";
+import { evcRouter } from "./modules/evc/router.js";
+import { adminIncidentsRouter } from "./modules/admin/incidents/router.js";
 
 export function createApp() {
   const app = express();
@@ -49,7 +52,7 @@ export function createApp() {
   app.use(express.urlencoded({ extended: false, limit: "1mb" }));
   app.use(`${API_PREFIX}/auth`, rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 30,
+    limit: env.NODE_ENV === "test" ? 300 : 30,
     standardHeaders: "draft-7",
     legacyHeaders: false,
   }));
@@ -65,19 +68,30 @@ export function createApp() {
     } catch (error) {
       logger.warn({ err: error }, "Upload directory health check failed");
     }
-    try {
-      const { spawn } = await import("node:child_process");
-      pythonAvailable = await new Promise((resolve) => {
-        const child = spawn(env.PYTHON_BIN, ["--version"], { windowsHide: true });
-        const timeout = setTimeout(() => {
-          child.kill();
-          resolve(false);
-        }, 2000);
-        child.once("error", () => { clearTimeout(timeout); resolve(false); });
-        child.once("close", (code) => { clearTimeout(timeout); resolve(code === 0); });
-      });
-    } catch {
-      pythonAvailable = false;
+    if (env.AI_SERVICE_URL) {
+      try {
+        const response = await fetch(`${env.AI_SERVICE_URL.replace(/\/+$/, "")}/health`, {
+          signal: AbortSignal.timeout(2000),
+        });
+        pythonAvailable = response.ok;
+      } catch {
+        pythonAvailable = false;
+      }
+    } else {
+      try {
+        const { spawn } = await import("node:child_process");
+        pythonAvailable = await new Promise((resolve) => {
+          const child = spawn(env.PYTHON_BIN, ["--version"], { windowsHide: true });
+          const timeout = setTimeout(() => {
+            child.kill();
+            resolve(false);
+          }, 2000);
+          child.once("error", () => { clearTimeout(timeout); resolve(false); });
+          child.once("close", (code) => { clearTimeout(timeout); resolve(code === 0); });
+        });
+      } catch {
+        pythonAvailable = false;
+      }
     }
     const mongoReady = mongoose.connection.readyState === 1;
     const status = mongoReady && uploadWritable ? 200 : 503;
@@ -102,13 +116,16 @@ export function createApp() {
   app.use(`${API_PREFIX}/auth`, authRouter({ audit: writeAudit }));
   app.use(`${API_PREFIX}`, peopleRouter());
   app.use(`${API_PREFIX}/institutions`, institutionsRouter());
+  app.use(`${API_PREFIX}`, casesRouter());
   app.use(`${API_PREFIX}/applications`, applicationsRouter());
   app.use(`${API_PREFIX}`, documentsRouter());
   app.use(`${API_PREFIX}`, workflowRouter());
   app.use(`${API_PREFIX}/dashboard`, dashboardRouter());
   app.use(`${API_PREFIX}`, adminRouter());
   app.use(`${API_PREFIX}/admin`, adminRouter());
-  app.use(`${API_PREFIX}`, casesRouter());
+  app.use(`${API_PREFIX}/admin/incidents`, adminIncidentsRouter());
+  app.use(`${API_PREFIX}`, stakeholdersRouter());
+  app.use(`${API_PREFIX}/evc`, evcRouter());
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

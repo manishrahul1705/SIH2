@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
-import { Activity, AlertTriangle, ArrowRight, Bell, Check, CheckCircle2, ClipboardCheck, Clock3, Download, FileCheck2, FileText, MapPin, Plus, RefreshCw, ShieldCheck, UploadCloud, Users } from "lucide-react";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Activity, AlertTriangle, ArrowLeft, ArrowRight, Bell, Check, CheckCircle2, ClipboardCheck, Clock3, Download, Eye, FileCheck2, FileText, History as HistoryIcon, MapPin, Plus, RefreshCw, Search, ShieldCheck, UploadCloud, Users, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "../services/api";
 import { adminApi, adminRoleLabels } from "../services/admin";
-import { caseWorkflowApi, waitForDocumentBatch } from "../services/caseWorkflow";
+import { ambiguousDateChoices, caseWorkflowApi, waitForDocumentBatch } from "../services/caseWorkflow";
 import DocumentsLive from "./DocumentsLive";
+import VerificationWorkspace from "./VerificationWorkspace";
 import NotificationsLive from "./NotificationsLive";
 import QueueLive from "./QueueLive";
 import UndertakingsLive from "./UndertakingsLive";
@@ -24,23 +25,26 @@ import { useAppStore } from "../store/useAppStore";
 import { buildRoute, routeForApplication } from "../utils/routeBuilder";
 import { calculateScore, demoScoreInput } from "../utils/scoreCalculator";
 import { Badge, Card, ConfirmDialog, DataTable, DeadlineBadge, AIFieldRow, FileDropzone, OwnershipClockBar, ProjectedScoreCard, ReasonDialog, ScoreBreakdownTable, ScoreGauge, StageStepper, StatCard, TabsView, Toast } from "../components/ui/primitives";
+import DocumentEvidencePreview from "../components/DocumentEvidencePreview";
+import DocumentPreviewDialog from "../components/DocumentPreviewDialog";
+import StageWorkflowPanel from "../components/StageWorkflowPanel";
 
 export const pageSettings = {
   dashboard: { title: "Institution dashboard", description: "A clear view of your applications, obligations and next actions.", eyebrow: "INSTITUTION WORKSPACE", roles: ["Institution user"] },
   application: { title: "New application", description: "Prepare an application for submission under the policy in force.", eyebrow: "APPLICATION WORKSPACE", roles: ["Institution user"] },
   cases: { title: "My cases", description: "Follow each application through its policy-defined stages.", eyebrow: "CASE REGISTER", roles: ["Institution user", "Scrutiny / Regional officer"] },
-  documents: { title: "Documents and validity", description: "View documents linked to your institution’s applications.", eyebrow: "DOCUMENT REGISTER", roles: ["Institution user"] },
+  documents: { title: "Documents and validity", description: "Choose an application to review its documents, verification status, and extracted fields.", eyebrow: "DOCUMENT REGISTER", roles: ["Institution user"] },
   documentReview: { title: "Evidence documents", description: "View documents in your authorized case scope.", eyebrow: "DOCUMENT REGISTER", roles: ["Institution user", "Scrutiny / Regional officer"] },
   undertakings: { title: "Undertakings", description: "Review actual undertaking records and due dates.", eyebrow: "OBLIGATION REGISTER", roles: ["Institution user"] },
   deficiencies: { title: "Deficiency responses", description: "Respond to returned items with evidence and a written explanation.", eyebrow: "RE-SCRUTINY", roles: ["Institution user"] },
   notifications: { title: "Notifications", description: "Review obligation reminders and escalations. Acknowledgement does not close an obligation.", eyebrow: "ALERT CENTRE", roles: ["All"] },
   audit: { title: "Audit trail", description: "Review recorded backend audit events.", eyebrow: "SYSTEM RECORD", roles: ["Admin"] },
   queue: { title: "My queue", description: "Officer-held work, ordered by urgency and service window.", eyebrow: "OFFICER WORKSPACE", roles: ["Scrutiny / Regional officer"] },
-  caseControl: { title: "Case detail and stage control", description: "Review stage evidence, ownership and policy route.", eyebrow: "CASE WORKSPACE", roles: ["Scrutiny / Regional officer", "Institution user"] },
+  caseControl: { title: "Case detail and stage control", description: "Review stage evidence, ownership and policy route.", eyebrow: "CASE WORKSPACE", roles: ["Scrutiny / Regional officer", "Institution user", "EVC member", "EVC chairman", "SAC/SHC member", "Competent authority", "Senior authority", "Admin"] },
   verification: { title: "Verification", description: "Verify institution-submitted evidence as a separate official action.", eyebrow: "VERIFICATION QUEUE", roles: ["Scrutiny / Regional officer"] },
-  evc: { title: "EVC visits", description: "Review visit records assigned to your account.", eyebrow: "EXPERT VISIT COMMITTEE", roles: ["EVC member", "Scrutiny / Regional officer"] },
+  evc: { title: "EVC visits", description: "Review visit records assigned to your account.", eyebrow: "EXPERT VISIT COMMITTEE", roles: ["EVC member", "EVC chairman", "Scrutiny / Regional officer"] },
   hearings: { title: "Committee cases", description: "Review cases assigned to SHC or SAC stages.", eyebrow: "SAC / SHC", roles: ["SAC/SHC member"] },
-  decisions: { title: "Decisions", description: "Record a final decision for cases whose configured route is complete.", eyebrow: "COMPETENT AUTHORITY", roles: ["Competent authority"] },
+  decisions: { title: "Legacy decisions", description: "Record a final decision for legacy cases whose configured route is complete.", eyebrow: "ADMINISTRATOR", roles: ["Admin"] },
   region: { title: "Region dashboard", description: "Compare ageing, workload and bottlenecks by ownership and region.", eyebrow: "REGIONAL OVERSIGHT", roles: ["Senior authority", "Competent authority"] },
   reports: { title: "Reports", description: "Review backend analytics for applications and institutions.", eyebrow: "REPORTING", roles: ["Senior authority", "Competent authority"] },
   policy: { title: "Policy and stages", description: "Review policy versions stored in the backend.", eyebrow: "ADMINISTRATION", roles: ["Admin"] },
@@ -90,6 +94,17 @@ function Dashboard({ data, reload }) {
       <StatCard label="Open alerts" value={data.summary.openAlerts} icon={Bell} />
     </div>
     <div className="dashboard-columns">
+      {data.actionScore && <Card title="Live Compliance Action Score" description={data.actionScore.note}>
+        {data.actionScore.assessmentComplete
+          ? <div className="score-dashboard">
+            <ScoreGauge score={data.actionScore.current.score} onBreakdown={() => document.getElementById("action-score-breakdown")?.scrollIntoView({ behavior: "smooth" })} />
+            <div><strong>30-day projection: {data.actionScore.projected.score ?? "Incomplete"}</strong><p className="muted">As of {new Date(data.actionScore.assessedAt).toLocaleString()}. Projection assumes no new uploads or obligation changes.</p></div>
+            <div id="action-score-breakdown" className="table-wrap"><table className="data-table"><thead><tr><th>Deduction</th><th>Reason</th><th>Points</th></tr></thead><tbody>
+              {data.actionScore.current.deductions.length ? data.actionScore.current.deductions.map((item, index) => <tr key={`${item.recordId}-${index}`}><td>{item.category}</td><td>{item.reason}</td><td>{item.points}</td></tr>) : <tr><td colSpan="3">No current deductions</td></tr>}
+            </tbody></table></div>
+          </div>
+          : <p className="muted">Score is incomplete until active case evidence has been assessed under the configured policy.</p>}
+      </Card>}
       <Card title="Institution actions" description="Open undertakings recorded for your applications." action={<Link className="text-link" to="/undertakings">View all</Link>}>
         {required.length ? <div className="action-list">{required.map((item) => <div className="action-row" key={item.id}><span className="action-icon warning"><AlertTriangle size={16} /></span><div className="action-copy"><strong>{item.title}</strong><small>{item.caseId}</small></div><DeadlineBadge deadline={item.dueDate} /><Link className="button button-secondary button-small" to="/undertakings">Open</Link></div>)}</div> : <p className="muted">No open undertakings.</p>}
       </Card>
@@ -104,6 +119,8 @@ function Dashboard({ data, reload }) {
 function InfoIcon() { return <ShieldCheck size={17} />; }
 
 function NewApplication({ data, setMessage }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resumeCaseId = searchParams.get("caseId");
   const [applicationTypes, setApplicationTypes] = useState(Object.entries(applicationTypeLabels).map(([id, label]) => ({ id, label })));
   const [applicationType, setApplicationType] = useState("");
   const [applicability, setApplicability] = useState(defaultApplicability);
@@ -117,7 +134,49 @@ function NewApplication({ data, setMessage }) {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [extractions, setExtractions] = useState({});
   const [fieldValues, setFieldValues] = useState({});
+  const [resolvedAmbiguities, setResolvedAmbiguities] = useState({});
   const [analysisWait, setAnalysisWait] = useState(null);
+  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState(null);
+
+  useEffect(() => {
+    if (!resumeCaseId) return undefined;
+    let active = true;
+    setLoadingDraft(true);
+    setPageError("");
+    Promise.all([
+      caseWorkflowApi.getCase(resumeCaseId),
+      caseWorkflowApi.getChecklist(resumeCaseId),
+      caseWorkflowApi.getCaseDocuments(resumeCaseId),
+    ]).then(async ([record, checklistResult, documents]) => {
+      if (!["draft", "returned"].includes(record.status)) {
+        throw new Error("Only a draft or returned application can be continued here.");
+      }
+      const extractionResults = await Promise.all(documents.map(async (document) => ({
+        document,
+        result: await caseWorkflowApi.getExtraction(document._id),
+      })));
+      if (!active) return;
+      setCaseRecord(record);
+      setApplicationType(record.applicationType);
+      setApplicability({ ...defaultApplicability, ...(record.applicability || {}) });
+      setChecklist(checklistResult.checklist || []);
+      setExtractions(Object.fromEntries(extractionResults.map(({ document, result }) => [document._id, result])));
+      setFieldValues(Object.fromEntries(extractionResults.flatMap(({ document, result }) => (result.extraction?.fields || []).map((field) => [
+        `${document._id}:${field.field_name}`,
+        field.confirmed_value ?? (field.prefill ? field.ai_value : ""),
+      ]))));
+      setResolvedAmbiguities(Object.fromEntries(extractionResults.flatMap(({ document, result }) => (result.extraction?.fields || [])
+        .filter((field) => field.ambiguous && field.confirmed_value != null)
+        .map((field) => [`${document._id}:${field.field_name}`, true]))));
+      setPageNotice(`Draft ${record.caseNo} was restored. Continue reviewing its documents.`);
+    }).catch((error) => {
+      if (active) setPageError(error.message || "The saved application could not be restored.");
+    }).finally(() => {
+      if (active) setLoadingDraft(false);
+    });
+    return () => { active = false; };
+  }, [resumeCaseId]);
 
   useEffect(() => {
     let active = true;
@@ -265,7 +324,7 @@ function NewApplication({ data, setMessage }) {
         for (const { document, result } of results) {
           for (const field of result.extraction?.fields || []) {
             const key = `${document.document_id}:${field.field_name}`;
-            if (!Object.hasOwn(next, key)) next[key] = field.confirmed_value ?? field.ai_value ?? "";
+            if (!Object.hasOwn(next, key)) next[key] = field.confirmed_value ?? (field.prefill ? field.ai_value : "");
           }
         }
         return next;
@@ -307,9 +366,12 @@ function NewApplication({ data, setMessage }) {
     try {
       const confirmedFields = fields.map((field) => ({
         field_name: field.field_name,
-        confirmed_value: fieldValues[`${documentId}:${field.field_name}`] ?? field.confirmed_value ?? field.ai_value ?? "",
+        confirmed_value: fieldValues[`${documentId}:${field.field_name}`] ?? field.confirmed_value ?? (field.prefill ? field.ai_value : ""),
       }));
-      const result = await caseWorkflowApi.confirmFields(documentId, confirmedFields, true);
+      const resolved = fields
+        .filter((field) => resolvedAmbiguities[`${documentId}:${field.field_name}`])
+        .map((field) => field.field_name);
+      const result = await caseWorkflowApi.confirmFields(documentId, confirmedFields, true, resolved, caseRecord?._id);
       setExtractions((current) => ({ ...current, [documentId]: result }));
       if (caseRecord) await refreshCase();
       setPageNotice("All fields for this document have been saved together.");
@@ -326,10 +388,39 @@ function NewApplication({ data, setMessage }) {
     setPageNotice("");
     try {
       const draft = await ensureDraft();
-      const result = await caseWorkflowApi.submitCase(draft._id, draft.version);
-      setCaseRecord(result.case);
-      setChecklist(result.checklist || []);
-      setPageNotice(`Application ${result.case.caseNo} was submitted.`);
+      let result;
+      let refreshedAfterConflict = false;
+      try {
+        result = await caseWorkflowApi.submitCase(draft._id, draft.version);
+      } catch (submitError) {
+        if (!["VERSION_CONFLICT", "CASE_VERSION_CONFLICT"].includes(submitError.code)) throw submitError;
+        const latest = await caseWorkflowApi.getCase(draft._id);
+        const draftInputsUnchanged = latest.status === "draft"
+          && latest.applicationType === draft.applicationType
+          && JSON.stringify(latest.applicability || {}) === JSON.stringify(draft.applicability || {})
+          && JSON.stringify(latest.route || []) === JSON.stringify(draft.route || []);
+        if (!draftInputsUnchanged) throw submitError;
+        setCaseRecord(latest);
+        result = await caseWorkflowApi.submitCase(latest._id, latest.version);
+        refreshedAfterConflict = true;
+      }
+      const notice = refreshedAfterConflict
+        ? `Application ${result.case.caseNo} was submitted after refreshing its latest saved version.`
+        : `Application ${result.case.caseNo} was submitted.`;
+      setCaseRecord(null);
+      setApplicationType("");
+      setApplicability(defaultApplicability);
+      setPreview(null);
+      setChecklist([]);
+      setSelectedFiles({});
+      setExtractions({});
+      setFieldValues({});
+      setResolvedAmbiguities({});
+      setLoadingPreview(false);
+      setAnalysisWait(null);
+      setPreviewDocument(null);
+      setSearchParams({}, { replace: true });
+      setPageNotice(notice);
       setMessage(`Application ${result.case.caseNo} submitted.`);
     } catch (error) {
       setPageError(error.message);
@@ -350,7 +441,13 @@ function NewApplication({ data, setMessage }) {
   const missingRequired = checklist.filter((slot) => slot.required && !["confirmed", "verified"].includes(slot.status));
   const selectedFileCount = applicableSlots.filter((slot) => selectedFiles[slot.slotId]).length;
   const attachedDocumentCount = applicableSlots.filter((slot) => slot.documentId).length;
-  const route = preview?.route || [];
+  const requiredDocumentCount = checklist.filter((slot) => slot.required).length;
+  const selectedOrUploadedRequiredCount = checklist.filter((slot) => slot.required
+    && (slot.documentId || selectedFiles[slot.slotId])).length;
+  const documentProgress = requiredDocumentCount
+    ? Math.round((selectedOrUploadedRequiredCount / requiredDocumentCount) * 100)
+    : 100;
+  const applicabilityReviewCount = checklist.filter((slot) => slot.reviewRequired).length;
   const conditionQuestions = [
     ["landIsLeased", "Is the institution using leased land?"],
     ["newAreaAdded", "Is new land or area being added?"],
@@ -371,10 +468,15 @@ function NewApplication({ data, setMessage }) {
         description="Select an application type to load its document checklist."
         action={caseRecord && <button className="button button-secondary button-small" onClick={() => {
           setCaseRecord(null);
+          setApplicationType("");
           setApplicability(defaultApplicability);
-          setChecklist(preview?.checklist || []);
+          setPreview(null);
+          setChecklist([]);
           setSelectedFiles({});
           setExtractions({});
+          setFieldValues({});
+          setResolvedAmbiguities({});
+          setSearchParams({}, { replace: true });
           setPageNotice("Your saved draft remains available in the case register. You can start another application.");
         }}>Start another application</button>}
       >
@@ -382,7 +484,7 @@ function NewApplication({ data, setMessage }) {
           <select
             aria-label="Application type"
             value={applicationType}
-            disabled={Boolean(caseRecord)}
+            disabled={Boolean(caseRecord) || loadingDraft}
             onChange={(event) => {
               setApplicationType(event.target.value);
               setApplicability(defaultApplicability);
@@ -424,30 +526,78 @@ function NewApplication({ data, setMessage }) {
       {applicationType && <Card
         title="Required documents"
         description={loadingPreview ? "Updating the checklist…" : `${applicableSlots.length} document slots are required or need applicability review.`}
+        className="application-documents-panel"
         action={caseRecord && <button className="button button-secondary button-small" disabled={busyAction === "refresh"} onClick={refreshChecklist}><RefreshCw size={14} /> Refresh</button>}
       >
+        <div className="application-document-summary">
+          <div className="application-document-summary-copy">
+            <span className="application-document-summary-icon"><FileCheck2 size={20} /></span>
+            <div><strong>{selectedOrUploadedRequiredCount} of {requiredDocumentCount} required files selected or uploaded</strong><small>{applicabilityReviewCount ? `${applicabilityReviewCount} conditional document${applicabilityReviewCount === 1 ? "" : "s"} need an applicability answer.` : "Requirements are based on the selected application and your answers."}</small></div>
+          </div>
+          <div className="application-document-progress" role="progressbar" aria-label="Required documents selected or uploaded" aria-valuemin={0} aria-valuemax={100} aria-valuenow={documentProgress}><span style={{ width: `${documentProgress}%` }} /></div>
+          <span className="application-document-progress-label">{documentProgress}%</span>
+        </div>
         {pageError && !preview
           ? <div className="state-card state-error"><AlertTriangle size={22} /><h3>Checklist unavailable</h3><p>Document requirements cannot be shown until a signed-off policy is available.</p><button className="button button-secondary" disabled={loadingPreview} onClick={() => setApplicability((current) => ({ ...current }))}><RefreshCw size={15} /> Try again</button></div>
           : loadingPreview && !checklist.length
           ? <div className="loading-state" aria-label="Loading checklist"><i /><i /><i /></div>
           : applicableSlots.length
-            ? <div className="case-document-list">{applicableSlots.map((slot) => {
+            ? <div className="case-document-scroll-region"><div className="case-document-list">{applicableSlots.map((slot) => {
               const documentId = slot.documentId;
+              const selectedFile = selectedFiles[slot.slotId];
               const extractionResult = documentId ? extractions[documentId] : null;
               const extractedFields = extractionResult?.extraction?.fields || [];
               const failedRules = (extractionResult?.extraction?.rule_results_json || []).filter((rule) => rule?.passed === false);
               const saved = extractionResult?.document?.status === "CONFIRMED";
+              const verification = extractionResult?.document?.verification;
+              const documentStatus = extractionResult?.document?.status;
+              const normalizedDocumentStatus = documentStatus || slot.status?.toUpperCase();
+              const uploadStatus = selectedFile
+                ? { label: "New file selected", variant: "warning" }
+                : normalizedDocumentStatus === "QUARANTINED"
+                  ? { label: "Quarantined", variant: "danger" }
+                  : normalizedDocumentStatus === "AI_FAILED"
+                    ? { label: "Analysis failed", variant: "danger" }
+                    : normalizedDocumentStatus === "REJECTED"
+                      ? { label: "Processing rejected", variant: "danger" }
+                      : normalizedDocumentStatus === "PROCESSING"
+                        ? { label: "Processing", variant: "info" }
+                        : normalizedDocumentStatus === "AI_DONE"
+                          ? { label: "Ready to confirm", variant: "warning" }
+                          : normalizedDocumentStatus === "AWAITING_CONFIRMATION" || slot.status === "pending_confirmation"
+                            ? { label: "Confirmation needed", variant: "warning" }
+                            : normalizedDocumentStatus === "CONFIRMED" || slot.status === "confirmed" || slot.status === "verified"
+                              ? { label: "Confirmed", variant: "success" }
+                              : documentId || slot.status === "uploaded" || normalizedDocumentStatus === "UPLOADED"
+                                ? { label: "Uploaded", variant: "info" }
+                                : slot.reviewRequired
+                                  ? { label: "Applicability review", variant: "review" }
+                                  : { label: "Not uploaded", variant: "neutral" };
+              const verificationStatus = documentId && !selectedFile
+                ? verification === "verified" || slot.status === "verified"
+                  ? { label: "Verified", variant: "success" }
+                  : verification === "not_verified"
+                    ? { label: "Not verified", variant: "danger" }
+                    : { label: "Verification pending", variant: "warning" }
+                : null;
+              const suggestedType = extractionResult?.extraction?.m1_type;
+              const suggestedTypeConfidence = Number(extractionResult?.extraction?.m1_confidence);
               return <article className="case-document-slot" key={slot.slotId}>
                 <div className="case-document-slot-heading">
                   <div>
                     <h3>{slot.label}</h3>
                     <p>{slot.requirement === "R" ? "Required document" : slot.reviewRequired ? "Conditional — answer the application details to confirm if required" : "Required based on your answers"}</p>
                   </div>
-                  <Badge variant={slot.status === "confirmed" || slot.status === "verified" ? "success" : slot.status === "pending_confirmation" ? "warning" : slot.reviewRequired ? "review" : "neutral"}>
-                    {slot.status === "pending_confirmation" ? "AI review ready" : slot.status.replaceAll("_", " ")}
-                  </Badge>
+                  <div className="case-document-statuses">
+                    <Badge variant={uploadStatus.variant}>{uploadStatus.label}</Badge>
+                    {verificationStatus && <Badge variant={verificationStatus.variant}>{verificationStatus.label}</Badge>}
+                  </div>
                 </div>
                 {slot.helpText && <p className="case-slot-help">{slot.helpText}</p>}
+                {suggestedType && <div className="case-ai-findings" role="status">
+                  <strong>AI document type suggestion</strong>
+                  <p>{suggestedType}{Number.isFinite(suggestedTypeConfidence) ? ` · ${Math.round(suggestedTypeConfidence * 100)}% confidence` : ""}. This suggestion does not choose the application route.</p>
+                </div>}
                 <div className="case-slot-upload">
                   <label className="button button-secondary button-small">
                     <UploadCloud size={15} /> Choose PDF or image
@@ -459,36 +609,85 @@ function NewApplication({ data, setMessage }) {
                     />
                   </label>
                   <span className="case-file-name">
-                    {selectedFiles[slot.slotId]?.name || (documentId ? "Document uploaded · choose a new file to replace it" : "PDF, JPG or PNG · up to 20 MB")}
+                    {selectedFile?.name || (documentId ? extractionResult?.document?.original_name || "Document uploaded · choose a new file to replace it" : "PDF, JPG or PNG · up to 20 MB")}
                   </span>
+                  <button
+                    className="button button-secondary button-small case-document-view"
+                    type="button"
+                    disabled={!selectedFile && !documentId}
+                    aria-label={`View ${slot.label}`}
+                    onClick={() => setPreviewDocument({
+                      file: selectedFile || null,
+                      documentId: selectedFile ? null : documentId,
+                      fileName: selectedFile?.name || extractionResult?.document?.original_name || slot.label,
+                      mimeType: selectedFile?.type || extractionResult?.document?.mime || "",
+                    })}
+                  ><Eye size={14} /> View</button>
                 </div>
                 {documentId && <div className="case-document-review">
                   {extractionResult?.extraction && <>
+                    {extractionResult.document?.status === "QUARANTINED" && <div className="case-ai-findings" role="alert">
+                      <strong>Document quarantined</strong>
+                      <p>{extractionResult.document.quarantine_reason || "This file did not pass the local safety checks. Upload a safe replacement."}</p>
+                    </div>}
                     {extractionResult.document?.status === "AI_FAILED" && <div className="case-ai-findings" role="alert">
                       <strong>Text detection could not complete</strong>
                       <p>{extractionResult.extraction.processing_error_code || "Enter any fields that were not detected, then save them below."}</p>
                     </div>}
                     {failedRules.length > 0 && <div className="case-ai-findings" role="status">
                       <strong>AI validation findings</strong>
-                      <ul>{failedRules.map((rule, index) => <li key={rule.ruleId || index}>{rule.message || "A validation rule needs review."}</li>)}</ul>
+                      <ul>{failedRules.map((rule, index) => <li key={`${rule.ruleId || "rule"}-${index}`}>{rule.message || "A validation rule needs review."}</li>)}</ul>
                       <p>Review and correct the document information. AI findings do not automatically reject the application.</p>
                     </div>}
                     <div className="case-extraction-fields">
                       <p className="case-extraction-intro">Detected fields are suggestions. Fill any blank values, review the entries, then save all fields together.</p>
                       {extractedFields.map((field) => {
                       const valueKey = `${documentId}:${field.field_name}`;
+                      const dateField = /(?:date|valid_from|valid_to|lease_start|lease_end)$/.test(field.field_name);
+                      const dateChoices = field.ambiguous ? ambiguousDateChoices(field) : [];
+                      const fieldLabel = {
+                        issue_date: "Issue Date",
+                        valid_from: "Valid From",
+                        valid_to: "Valid To",
+                        cert_no: "Certificate Number",
+                        issuer: "Issuer",
+                      }[field.field_name] || field.field_name.replaceAll("_", " ");
                       return <div className="case-extraction-field" key={field.field_name}>
-                        <div><strong>{field.field_name.replaceAll("_", " ")}</strong><small>
+                        <div><strong>{fieldLabel}</strong><small>
                           {field.ai_value ? `Detected: ${field.ai_value}` : "Not detected — enter a value if available"}
                           {field.source_text ? ` · Source: ${field.source_text}` : ""}
                           {field.ai_value ? ` · ${field.zone} review` : ""}
+                          {field.ambiguous ? " · Ambiguous date: choose the intended interpretation" : ""}
                         </small></div>
-                        <input
-                          aria-label={`${field.field_name.replaceAll("_", " ")} for ${slot.label}`}
-                          value={fieldValues[valueKey] ?? field.confirmed_value ?? field.ai_value ?? ""}
-                          disabled={saved}
-                          onChange={(event) => setFieldValues((current) => ({ ...current, [valueKey]: event.target.value }))}
-                        />
+                        {field.ambiguous && dateChoices.length
+                          ? <select
+                            aria-label={`Resolve ambiguous ${fieldLabel} for ${slot.label}`}
+                            value={resolvedAmbiguities[valueKey] ? fieldValues[valueKey] ?? "" : ""}
+                            disabled={saved}
+                            onChange={(event) => {
+                              setFieldValues((current) => ({ ...current, [valueKey]: event.target.value }));
+                              setResolvedAmbiguities((current) => ({ ...current, [valueKey]: Boolean(event.target.value) }));
+                            }}
+                          >
+                            <option value="">Choose the intended date</option>
+                            {dateChoices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
+                          </select>
+                          : <input
+                            type={dateField ? "date" : "text"}
+                            aria-label={`${fieldLabel} for ${slot.label}`}
+                            value={fieldValues[valueKey] ?? field.confirmed_value ?? (field.prefill ? field.ai_value : "")}
+                            disabled={saved}
+                            onChange={(event) => setFieldValues((current) => ({ ...current, [valueKey]: event.target.value }))}
+                          />}
+                        {field.ambiguous && !dateChoices.length && <label className="field-label case-ambiguity-resolution">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(resolvedAmbiguities[valueKey])}
+                            disabled={saved}
+                            onChange={(event) => setResolvedAmbiguities((current) => ({ ...current, [valueKey]: event.target.checked }))}
+                          />
+                          I reviewed the source and selected the intended date
+                        </label>}
                       </div>;
                       })}
                       <button
@@ -506,7 +705,7 @@ function NewApplication({ data, setMessage }) {
                   </>}
                 </div>}
               </article>;
-            })}</div>
+            })}</div></div>
             : <div className="state-card"><FileText size={22} /><h3>No required document slots</h3><p>Based on the answers provided, this application has no documents to upload.</p></div>}
         {applicableSlots.length > 0 && <div className="case-detect-all">
           <div>
@@ -532,10 +731,12 @@ function NewApplication({ data, setMessage }) {
           ? <div className="case-submit-bar">
             <div>
               <strong>Draft {caseRecord.caseNo}</strong>
-              <span>{missingRequired.length ? `${missingRequired.length} required document${missingRequired.length === 1 ? "" : "s"} still need confirmation.` : "All required documents are confirmed."}</span>
+              <span>{missingRequired.length
+                ? `${missingRequired.length} required document${missingRequired.length === 1 ? "" : "s"} are missing or still need confirmation. The active policy determines whether submission is allowed.`
+                : "All required documents are confirmed."}</span>
             </div>
-            <button className="button button-primary" disabled={busyAction === "submit" || missingRequired.length > 0 || !["draft", "returned"].includes(caseRecord.status)} onClick={submitCase}>
-              {busyAction === "submit" ? "Submitting…" : missingRequired.length ? "Confirm required documents first" : "Submit application"}
+            <button className="button button-primary" disabled={busyAction === "submit" || !["draft", "returned"].includes(caseRecord.status)} onClick={submitCase}>
+              {busyAction === "submit" ? "Submitting…" : "Submit application"}
             </button>
           </div>
           : <div className="case-submit-bar">
@@ -546,16 +747,6 @@ function NewApplication({ data, setMessage }) {
           </div>}
       </Card>}
     </div>
-    <aside className="case-application-sidebar">
-      <Card title="Application route" description={preview ? `Policy ${preview.policyVersion}` : "Choose an application type to preview its route."}>
-        {preview && <StageStepper className="stage-stepper-preview" route={route} current={route[0]} />}
-        {caseRecord && <div className="case-draft-summary">
-          <Badge variant={caseRecord.status === "draft" ? "warning" : "info"}>{caseRecord.status.replaceAll("_", " ")}</Badge>
-          <p><strong>{caseRecord.caseNo}</strong></p>
-          <Link className="button button-secondary button-small" to={`/case/${caseRecord._id}`}>Open case</Link>
-        </div>}
-      </Card>
-    </aside>
     {analysisWait && <div className="case-analysis-backdrop" role="dialog" aria-modal="true" aria-labelledby="case-analysis-title" aria-describedby="case-analysis-description">
       <div className="case-analysis-dialog">
         <RefreshCw className="case-analysis-spinner" size={36} aria-hidden="true" />
@@ -575,6 +766,7 @@ function NewApplication({ data, setMessage }) {
         </span>
       </div>
     </div>}
+    {previewDocument && <DocumentPreviewDialog document={previewDocument} onClose={() => setPreviewDocument(null)} />}
   </div>;
 }
 
@@ -604,6 +796,12 @@ function CaseList() {
   const [cases, setCases] = useState(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
 
   useEffect(() => {
     let active = true;
@@ -616,14 +814,19 @@ function CaseList() {
           records.push(...batch);
           if (batch.length < 100) break;
         }
-        if (active) setCases(records.map((record) => ({
-          id: record.caseNo,
-          caseId: record._id,
-          type: applicationTypeLabels[record.applicationType] || record.applicationType,
-          stage: caseStageLabels[record.currentStage] || record.currentStage,
-          status: caseStatusLabels[record.status] || record.status,
-          updatedAt: record.updatedAt,
-        })));
+        if (active) setCases(records.map((record) => {
+          const currentStage = record.allocatedStages?.[record.currentStageIndex];
+          return {
+            id: record.caseNo,
+            caseId: record._id,
+            institution: record.institutionId?.name || "Institution",
+            type: applicationTypeLabels[record.applicationType] || record.applicationType,
+            stage: caseStageLabels[record.currentStage] || record.currentStage,
+            stageStatus: currentStage?.status || "",
+            status: caseStatusLabels[record.status] || record.status,
+            updatedAt: record.updatedAt,
+          };
+        }));
       } catch (loadError) {
         if (active) setError(loadError.message || "Could not load applications.");
       }
@@ -632,13 +835,33 @@ function CaseList() {
     return () => { active = false; };
   }, [reloadKey]);
 
-  const columns = useMemo(() => [
-    { accessorKey: "id", header: "Case ID", cell: ({ row }) => <Link className="mono text-link" to={`/case/${row.original.caseId}`}>{row.original.id}</Link> },
-    { accessorKey: "type", header: "Application type" },
-    { accessorKey: "stage", header: "Current stage" },
-    { accessorKey: "status", header: "Status", cell: ({ row }) => <Badge variant={row.original.status === "Rejected" ? "danger" : row.original.status === "Approved" ? "success" : row.original.status === "Action required" ? "warning" : "info"}>{row.original.status}</Badge> },
-    { accessorKey: "updatedAt", header: "Last updated", cell: ({ getValue }) => getValue() ? new Date(getValue()).toLocaleDateString() : "—" },
-  ], []);
+  const visibleCases = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return (cases || []).filter((item) => {
+      const matchesSearch = !query || [item.id, item.institution, item.type]
+        .some((value) => value?.toLocaleLowerCase().includes(query));
+      return matchesSearch
+        && (typeFilter === "all" || item.type === typeFilter)
+        && (stageFilter === "all" || item.stage === stageFilter)
+        && (statusFilter === "all" || item.status === statusFilter);
+    });
+  }, [cases, search, typeFilter, stageFilter, statusFilter]);
+  const pageCount = Math.max(1, Math.ceil(visibleCases.length / pageSize));
+  const pageCases = visibleCases.slice((page - 1) * pageSize, page * pageSize);
+  const summary = useMemo(() => ({
+    total: (cases || []).length,
+    inProgress: (cases || []).filter((item) => item.status === "In progress").length,
+    drafts: (cases || []).filter((item) => item.status === "Draft").length,
+    submitted: (cases || []).filter((item) => item.status === "Submitted").length,
+    actionRequired: (cases || []).filter((item) => item.status === "Action required").length,
+  }), [cases]);
+  const applicationTypes = [...new Set((cases || []).map((item) => item.type))].sort();
+  const stages = [...new Set((cases || []).map((item) => item.stage).filter(Boolean))].sort();
+
+  function updateFilter(setter, value) {
+    setter(value);
+    setPage(1);
+  }
 
   if (cases === null) {
     return error
@@ -646,14 +869,69 @@ function CaseList() {
       : <Card title="Your applications"><div className="loading-state" aria-label="Loading applications"><i /><i /><i /></div></Card>;
   }
 
-  return <Card
-    title={role === "Institution user" ? "Your applications" : "Cases"}
-    description={role === "Institution user" ? "Applications created by your institution." : "Applications available in your authorized case scope."}
-  >
-    {cases.length
-      ? <DataTable data={cases} columns={columns} emptyText="No applications match your search." />
-      : <div className="state-card"><FileText size={22} /><h3>No applications yet</h3><p>Your institution’s applications will appear here after you save an application draft.</p><Link className="button button-primary" to="/applications/new">Start an application</Link></div>}
-  </Card>;
+  const cards = [
+    { label: "Total applications", value: summary.total, icon: FileText, tone: "blue" },
+    { label: "In progress", value: summary.inProgress, icon: Clock3, tone: "blue" },
+    { label: "Draft", value: summary.drafts, icon: FileText, tone: "amber" },
+    { label: "Submitted", value: summary.submitted, icon: CheckCircle2, tone: "green" },
+    { label: "Action required", value: summary.actionRequired, icon: AlertTriangle, tone: "red" },
+  ];
+
+  return <section className="cases-workspace">
+    <div className="cases-summary-grid" aria-label="Application summary">
+      {cards.map(({ label, value, icon: Icon, tone }) => <article className={`cases-summary-card cases-summary-${tone}`} key={label}>
+        <span className="cases-summary-icon"><Icon size={20} aria-hidden="true" /></span>
+        <div><strong>{value}</strong><span>{label}</span></div>
+      </article>)}
+    </div>
+    <section className="cases-register-card">
+      <header className="cases-register-heading">
+        <div><h2>{role === "Institution user" ? "Your applications" : "Cases"}</h2><p>{role === "Institution user" ? "Open applications and returned applications that need your response." : "Applications assigned to your active stage, including frozen stages awaiting assistance."}</p></div>
+        {role === "Institution user" && <Link className="button button-primary cases-new-application" to="/applications/new"><Plus size={16} /> New application</Link>}
+      </header>
+      <div className="cases-register-filters">
+        <label className="cases-search-field"><Search size={16} /><input aria-label="Search applications" placeholder="Search by Case ID, institution name or application type…" value={search} onChange={(event) => updateFilter(setSearch, event.target.value)} /></label>
+        <label className="screen-reader-only" htmlFor="cases-type-filter">Application type</label>
+        <select id="cases-type-filter" value={typeFilter} onChange={(event) => updateFilter(setTypeFilter, event.target.value)}><option value="all">All application types</option>{applicationTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select>
+        <label className="screen-reader-only" htmlFor="cases-stage-filter">Application stage</label>
+        <select id="cases-stage-filter" value={stageFilter} onChange={(event) => updateFilter(setStageFilter, event.target.value)}><option value="all">All stages</option>{stages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select>
+        <label className="screen-reader-only" htmlFor="cases-status-filter">Application status</label>
+        <select id="cases-status-filter" value={statusFilter} onChange={(event) => updateFilter(setStatusFilter, event.target.value)}><option value="all">All statuses</option>{[...new Set(cases.map((item) => item.status))].sort().map((status) => <option key={status} value={status}>{status}</option>)}</select>
+      </div>
+      {cases.length
+        ? <>
+          <div className="cases-table-scroll">
+            <table className="cases-table">
+              <thead><tr><th scope="col">#</th><th scope="col">Case ID</th><th scope="col">Application type</th><th scope="col">Current stage</th><th scope="col">Status</th><th scope="col">Last updated</th><th scope="col"><span className="screen-reader-only">Actions</span></th></tr></thead>
+              <tbody>{pageCases.length ? pageCases.map((item, index) => {
+                const statusVariant = item.status === "Rejected" ? "danger" : item.status === "Approved" ? "success" : item.status === "Action required" ? "warning" : item.status === "Draft" ? "neutral" : "info";
+                const updated = item.updatedAt ? new Date(item.updatedAt) : null;
+                return <tr key={item.caseId}>
+                  <td className="cases-row-number">{(page - 1) * pageSize + index + 1}</td>
+                  <td><div className="cases-id-cell"><Link to={`/case/${item.caseId}`}>{item.id}</Link><small>{item.institution}</small></div></td>
+                  <td><span className="cases-type-pill">{item.type}</span></td>
+                  <td>{item.stageStatus === "FROZEN_WAITING_FOR_ASSIST"
+                    ? <span className="cases-stage-frozen">{item.stage}<small>Assistance requested</small></span>
+                    : item.stage || "—"}</td>
+                  <td><Badge variant={statusVariant}>{item.status}</Badge></td>
+                  <td>{updated && !Number.isNaN(updated.getTime()) ? <time dateTime={updated.toISOString()} className="cases-updated"><span>{updated.toLocaleDateString()}</span><small>{updated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></time> : "—"}</td>
+                  <td><Link className="button button-secondary button-small cases-view-button" to={`/case/${item.caseId}`}><Eye size={14} /> View</Link></td>
+                </tr>;
+              }) : <tr><td className="cases-empty-row" colSpan={7}>No applications match these filters.</td></tr>}</tbody>
+            </table>
+          </div>
+          <footer className="cases-table-footer">
+            <span>{visibleCases.length ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, visibleCases.length)} of ${visibleCases.length} applications` : "Showing 0 applications"}</span>
+            <div className="cases-pagination" aria-label="Application pages">
+              <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>‹</button>
+              {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => <button type="button" aria-label={`Page ${pageNumber}`} aria-current={pageNumber === page ? "page" : undefined} className={pageNumber === page ? "active" : ""} key={pageNumber} onClick={() => setPage(pageNumber)}>{pageNumber}</button>)}
+              <button type="button" aria-label="Next page" disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))}>›</button>
+            </div>
+          </footer>
+        </>
+        : <div className="state-card cases-empty-state"><FileText size={24} /><h3>{role === "Institution user" ? "No applications yet" : "No cases available"}</h3><p>{role === "Institution user" ? "Your institution’s applications will appear here after you save an application draft." : "Applications assigned to your active stage will appear here."}</p>{role === "Institution user" && <Link className="button button-primary" to="/applications/new">Start an application</Link>}</div>}
+    </section>
+  </section>;
 }
 
 function Documents({ data, aiEnabled, setMessage, onLeaseConfirm }) {
@@ -715,13 +993,27 @@ function Queue({ data }) {
 function CaseControl() {
   const { caseId } = useParams();
   const role = useAppStore((state) => state.role);
+  const user = useAppStore((state) => state.user);
+  const backendRole = useAppStore((state) => state.user?.role);
   const [record, setRecord] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [processing, setProcessing] = useState(null);
   const [fieldValues, setFieldValues] = useState({});
+  const [resolvedAmbiguities, setResolvedAmbiguities] = useState({});
+  const [stageChecks, setStageChecks] = useState([]);
+  const [verificationReasons, setVerificationReasons] = useState({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [savingDocument, setSavingDocument] = useState("");
+  const [savingVerification, setSavingVerification] = useState("");
+  const [sourcePreviewField, setSourcePreviewField] = useState(null);
+  const [sourcePreviewOpen, setSourcePreviewOpen] = useState(true);
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [caseHistory, setCaseHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const canEdit = role === "Institution user";
 
@@ -730,20 +1022,36 @@ function CaseControl() {
     async function loadCase() {
       try {
         setError("");
-        const [caseResult, documentResults] = await Promise.all([
+        const [caseResult, documentResults, processingResult] = await Promise.all([
           caseWorkflowApi.getCase(caseId),
           caseWorkflowApi.getCaseDocuments(caseId),
+          caseWorkflowApi.getCaseProcessing(caseId),
         ]);
         if (!Array.isArray(documentResults)) throw new Error("Case documents could not be loaded.");
         if (!active) return;
         setRecord(caseResult);
-        setDocuments(documentResults);
+        const processingRuns = new Map((processingResult?.documents || []).map((document) => [
+          String(document._id),
+          document.processingRun || null,
+        ]));
+        setDocuments(documentResults.map((document) => ({
+          ...document,
+          processingRun: processingRuns.get(String(document._id)),
+        })));
+        setSelectedDocumentId((current) => documentResults.some((document) => String(document._id) === current)
+          ? current
+          : String(documentResults[0]?._id || ""));
+        const firstEvidence = documentResults.flatMap((document) => (document.extraction?.fields || [])
+          .filter((field) => field.source_bbox?.length === 4)
+          .map((field) => ({ documentId: document._id, source_page: field.source_page || 1, source_bbox: field.source_bbox, confidence: field.ai_confidence })))[0];
+        setSourcePreviewField(firstEvidence || null);
+        setProcessing(processingResult);
         setFieldValues((current) => {
           const next = { ...current };
           for (const document of documentResults) {
             for (const field of document.extraction?.fields || []) {
               const key = `${document._id}:${field.field_name}`;
-              if (!Object.hasOwn(next, key)) next[key] = field.confirmed_value ?? field.ai_value ?? "";
+              if (!Object.hasOwn(next, key)) next[key] = field.confirmed_value ?? (field.prefill ? field.ai_value : "") ?? "";
             }
           }
           return next;
@@ -756,6 +1064,10 @@ function CaseControl() {
     return () => { active = false; };
   }, [caseId, reloadKey]);
 
+  useEffect(() => caseWorkflowApi.subscribeToCaseEvents(() => {
+    setReloadKey((key) => key + 1);
+  }), [caseId]);
+
   if (!record) {
     return error
       ? <Card title="Case unavailable"><p className="muted">{error}</p><Link className="button button-secondary" to="/cases">Return to cases</Link></Card>
@@ -763,11 +1075,27 @@ function CaseControl() {
   }
 
   const editable = canEdit && ["draft", "returned"].includes(record.status);
+  const activeStage = record.allocatedStages?.[record.currentStageIndex];
+  const canOverrideConfirmedFields = Boolean(record.workflowVersion
+    && activeStage
+    && activeStage.status !== "FROZEN_WAITING_FOR_ASSIST"
+    && (activeStage.assignedRole === backendRole
+      || activeStage.assignedRole === "EVC" && backendRole === "EVC_CHAIRMAN")
+    && (
+      !activeStage.assignedUserId
+      || String(activeStage.assignedUserId) === String(user?.id || user?._id)
+      || activeStage.assignedRole === "EVC"
+        && activeStage.assignedPanelUserIds?.some((id) => String(id) === String(user?.id || user?._id))
+    ));
   const route = record.route.map((stage) => caseStageLabels[stage] || stage);
   const currentStage = record.status === "draft" ? "Draft" : caseStageLabels[record.currentStage] || record.currentStage;
   const currentHolder = record.holderType === "institution" ? "Institution" : record.holderType === "committee" ? "Committee" : "Officer";
   const labelBySlot = new Map((record.checklist || []).map((slot) => [slot.slotId, slot.label]));
-  const missingRequired = (record.checklist || []).filter((slot) => slot.required && !["confirmed", "verified"].includes(slot.status));
+  const missingRequired = (record.checklist || []).filter((slot) => slot.required && ["missing", "quarantined"].includes(slot.status));
+  const isCurrentHolder = role === "Admin"
+    || (role === "Institution user" && record.holderType === "institution" && String(record.institutionId) === String(user?.institution_id))
+    || (record.holderId && String(record.holderId) === String(user?._id));
+  const canVerifyDocuments = role === "Admin" || (role === "Scrutiny / Regional officer" && isCurrentHolder);
 
   async function submitDraft() {
     setSubmitting(true);
@@ -776,6 +1104,7 @@ function CaseControl() {
     try {
       const result = await caseWorkflowApi.submitCase(record._id, record.version);
       setRecord({ ...result.case, checklist: result.checklist || [] });
+      setReloadKey((key) => key + 1);
       setNotice(result.warning || `Application ${result.case.caseNo} was submitted.`);
     } catch (submitError) {
       setError(submitError.message || "The application could not be submitted.");
@@ -784,80 +1113,407 @@ function CaseControl() {
     }
   }
 
-  async function saveFields(document) {
+  async function resubmitReturnedCase() {
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await caseWorkflowApi.resubmitCase(record._id, record.version);
+      setNotice(`Application ${result.case.caseNo} was resubmitted for re-scrutiny.`);
+      setReloadKey((key) => key + 1);
+    } catch (submitError) {
+      setError(submitError.message || "The returned application could not be resubmitted.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function saveFields(document, fieldNames, valueOverrides) {
     setSavingDocument(document._id);
     setError("");
     try {
-      const fields = (document.extraction?.fields || []).map((field) => ({
-        field_name: field.field_name,
-        confirmed_value: fieldValues[`${document._id}:${field.field_name}`] ?? field.confirmed_value ?? field.ai_value ?? "",
-      }));
-      await caseWorkflowApi.confirmFields(document._id, fields, document.status === "AI_FAILED");
+      const fields = (document.extraction?.fields || [])
+        .filter((field) => !fieldNames || fieldNames.includes(field.field_name))
+        .map((field) => ({
+          field_name: field.field_name,
+          confirmed_value: valueOverrides && Object.hasOwn(valueOverrides, field.field_name)
+            ? valueOverrides[field.field_name]
+            : fieldValues[`${document._id}:${field.field_name}`] ?? field.confirmed_value ?? (field.prefill ? field.ai_value : "") ?? "",
+        }));
+      if (!fields.length) throw new Error("No extracted fields are available to confirm.");
+      await caseWorkflowApi.confirmFields(document._id, fields, document.status === "AI_FAILED", resolvedAmbiguities[document._id] || [], record._id);
       setReloadKey((key) => key + 1);
+      return true;
     } catch (saveError) {
       setError(saveError.message || "Document fields could not be saved.");
+      return false;
     } finally {
       setSavingDocument("");
     }
   }
 
+  async function advanceStage() {
+    setSubmitting(true);
+    setError("");
+    try {
+      await caseWorkflowApi.advanceCase(record._id, { expectedVersion: record.version, completedChecklist: stageChecks });
+      setNotice("Stage checklist completed and the case route was advanced.");
+      setStageChecks([]);
+      setReloadKey((key) => key + 1);
+    } catch (advanceError) {
+      setError(advanceError.message || "The case could not be advanced.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function verifyDocument(document, verification) {
+    setSavingVerification(document._id);
+    setError("");
+    try {
+      await caseWorkflowApi.verifyDocument(document._id, {
+        verification,
+        reason: verificationReasons[document._id] || "",
+      });
+      setNotice(verification === "verified" ? "Document verified." : "Document marked not verified; the reason was recorded.");
+      setReloadKey((key) => key + 1);
+    } catch (verifyError) {
+      setError(verifyError.message || "Document verification could not be saved.");
+    } finally {
+      setSavingVerification("");
+    }
+  }
+
+  async function uploadEvcReport(file) {
+    if (!file) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await caseWorkflowApi.uploadEvcReport(record._id, file);
+      setNotice("EVC report uploaded. The case is advancing to its next configured stage.");
+      setReloadKey((key) => key + 1);
+    } catch (uploadError) {
+      setError(uploadError.message || "The EVC report could not be uploaded.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function openCaseHistory() {
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const entries = await caseWorkflowApi.getCaseHistory(record._id);
+      if (!Array.isArray(entries)) throw new Error("Case history could not be read.");
+      setCaseHistory(entries);
+    } catch (historyLoadError) {
+      setHistoryError(historyLoadError.message || "Case history could not be loaded.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  function downloadCaseReport() {
+    const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const rows = [
+      ["Section", "Field", "Value"],
+      ["Case", "Case number", record.caseNo],
+      ["Case", "Application type", applicationTypeLabels[record.applicationType] || record.applicationType],
+      ["Case", "Status", caseStatusLabels[record.status] || record.status],
+      ["Case", "Current stage", currentStage],
+      ["Case", "Current holder", currentHolder],
+      ["Case", "Policy version", record.policyVersion],
+      ["Case", "Version", record.version],
+      ...((record.allocatedStages || []).map((stage, index) => [
+        "Route",
+        `Stage ${index + 1}: ${stage.name}`,
+        `${stage.status}${stage.stageStartedAt ? `; started ${stage.stageStartedAt}` : ""}${stage.stageDueAt ? `; due ${stage.stageDueAt}` : ""}`,
+      ])),
+      ...documents.map((document) => [
+        "Document",
+        document.original_name,
+        `${document.doc_type_slot}; ${document.status}; verification ${document.verification || "not recorded"}`,
+      ]),
+      ...(processing?.tasks || []).map((task) => ["Task", task.type, `${task.state}; ${task.createdByRule}`]),
+      ...(processing?.findings || []).map((finding) => ["Finding", finding.code, `${finding.severity}; ${finding.status}; ${finding.message}`]),
+    ];
+    const blob = new Blob([rows.map((row) => row.map(csvValue).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = window.document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${record.caseNo || "case"}-report.csv`;
+    window.document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  const selectedDocument = documents.find((document) => String(document._id) === selectedDocumentId) || documents[0] || null;
+  const timelineStages = record.allocatedStages?.length
+    ? record.allocatedStages
+    : route.map((name, index) => ({ key: String(index), name, status: name === currentStage ? "ACTIVE" : "PENDING" }));
+  const timelineCurrentIndex = Number.isInteger(record.currentStageIndex)
+    ? record.currentStageIndex
+    : Math.max(0, route.findIndex((stage) => stage === currentStage));
+
   return <>
+    <header className="case-detail-header">
+      <div>
+        <p className="eyebrow">CASE WORKSPACE</p>
+        <h1>{record.caseNo}</h1>
+        <p>{applicationTypeLabels[record.applicationType] || record.applicationType} · {record.region || "Region not recorded"}</p>
+      </div>
+      <div className="case-detail-actions">
+        <button className="button button-secondary" type="button" onClick={openCaseHistory}><HistoryIcon size={16} /> Case history</button>
+        <button className="button button-primary" type="button" onClick={downloadCaseReport}><Download size={16} /> Download report</button>
+      </div>
+    </header>
     {error && <div className="alert alert-warning" role="alert"><AlertTriangle size={17} />{error}</div>}
     {notice && <div className="alert alert-success" role="status"><CheckCircle2 size={17} />{notice}</div>}
-    <div className="case-meta">
-      <span className="mono">{record.caseNo}</span>
+    <div className="case-meta case-detail-meta">
       <Badge variant={record.status === "approved" ? "success" : record.status === "rejected" ? "danger" : "info"}>{caseStatusLabels[record.status] || record.status}</Badge>
+      <Badge variant="neutral">Version {record.version}</Badge>
       <Badge variant="neutral">{record.policyVersion}</Badge>
       <Badge variant={currentHolder === "Institution" ? "warning" : "info"}>Current holder: {currentHolder}</Badge>
     </div>
-    <Card title="Application details" description={`${applicationTypeLabels[record.applicationType] || record.applicationType} · ${editable ? "Draft — you can edit document fields." : "Submitted — document fields are read-only."}`}
-      action={canEdit && record.status === "draft" && <button className="button button-primary" disabled={submitting || missingRequired.length > 0} onClick={submitDraft}>
-        {submitting ? "Submitting…" : missingRequired.length ? "Confirm required documents first" : "Submit application"}
-      </button>}>
-      <div className="per-stage-table">
-        <div><strong>Current stage</strong><strong>Status</strong><strong>Version</strong></div>
-        <div><span>{currentStage}</span><span>{caseStatusLabels[record.status] || record.status}</span><span className="mono">{record.version}</span></div>
-      </div>
-      {record.status === "draft"
-        ? <div className="note info-note">This draft is visible only to your institution. Workflow stages become visible after submission.</div>
-        : <StageStepper route={route} current={currentStage} holder={currentHolder} />}
+    <Card className="case-route-card" title="Application route" description="Progress across the stages configured for this application.">
+      <ol className="case-route-timeline">
+        {timelineStages.map((stage, index) => {
+          const completed = record.status === "approved" || stage.status === "APPROVED";
+          const active = record.status !== "draft" && !completed && index === timelineCurrentIndex;
+          const returned = stage.status === "REJECTED" || record.status === "returned" && active;
+          const status = completed ? "Completed" : returned ? "Returned" : active ? "In progress" : "Pending";
+          const date = stage.approvedAt || stage.stageStartedAt || stage.enteredAt;
+          return <li className={`case-route-step ${completed ? "completed" : ""} ${active ? "active" : ""} ${returned ? "returned" : ""}`} key={stage.key || index}>
+            <span className="case-route-marker">{completed ? <Check size={14} /> : index + 1}</span>
+            <span className="case-route-copy"><strong>{stage.name}</strong><small>{status}</small>{date && <time dateTime={date}>{new Date(date).toLocaleDateString()}</time>}</span>
+          </li>;
+        })}
+      </ol>
     </Card>
-    <Card title="Uploaded documents" description="Documents and their extracted fields are loaded from this case.">
-      {documents.length
-        ? <div className="case-document-list">{documents.map((document) => {
+    <div className="case-detail-overview">
+      <div className="case-detail-left-column">
+        <Card title="Application details" description={record.status === "returned"
+          ? "Returned — edit the required fields and resubmit for re-scrutiny."
+          : editable ? "Draft — you can edit document fields." : "Submitted application information."}
+        action={canEdit && record.status === "draft" && <button className="button button-primary button-small" disabled={submitting || (record.blockSubmitOnMissing && missingRequired.length > 0)} onClick={submitDraft}>
+          {submitting ? "Submitting…" : record.blockSubmitOnMissing && missingRequired.length ? "Upload required documents first" : "Submit application"}
+        </button> || canEdit && record.status === "returned" && <button className="button button-primary button-small" disabled={submitting || (record.blockSubmitOnMissing && missingRequired.length > 0)} onClick={resubmitReturnedCase}>
+          {submitting ? "Resubmitting…" : record.blockSubmitOnMissing && missingRequired.length ? "Upload required documents first" : "Resubmit for re-scrutiny"}
+        </button>}>
+          <dl className="case-application-facts">
+            <div><dt>Application type</dt><dd>{applicationTypeLabels[record.applicationType] || record.applicationType || "—"}</dd></div>
+            <div><dt>Current stage</dt><dd>{currentStage || "—"}</dd></div>
+            <div><dt>Submitted</dt><dd>{record.submittedAt ? new Date(record.submittedAt).toLocaleDateString() : record.status === "draft" ? "Not submitted" : "—"}</dd></div>
+            <div><dt>Policy version</dt><dd>{record.policyVersion || "—"}</dd></div>
+            <div><dt>Region</dt><dd>{record.region || "—"}</dd></div>
+            <div><dt>Current holder</dt><dd>{currentHolder}</dd></div>
+          </dl>
+          {record.status === "draft" && <div className="note info-note">This draft is visible only to your institution. Workflow stages become visible after submission.</div>}
+        </Card>
+        <Card className="case-analysis-card" title={`Document analysis checks${selectedDocument?.extraction?.rule_results_json?.length ? ` (${selectedDocument.extraction.rule_results_json.length})` : ""}`} description="Review recorded checks for the selected document.">
+          {selectedDocument?.extraction?.rule_results_json?.length
+            ? <ul className="case-analysis-check-list">{selectedDocument.extraction.rule_results_json.map((check, index) => <li key={`${selectedDocument._id}-${check.ruleId || "check"}-${index}`}>
+              <div><strong>{check.ruleId || "Document check"}</strong><span className={check.passed ? "analysis-check-pass" : "analysis-check-fail"}>{check.passed ? "Passed" : check.severity || "Needs review"}</span></div>
+              <p>{check.message}</p>
+            </li>)}</ul>
+            : <p className="muted">{selectedDocument ? "No document analysis checks have been recorded." : "Analysis checks will appear here after a document is uploaded and processed."}</p>}
+        </Card>
+      </div>
+      {selectedDocument
+        ? <Card className="case-primary-document" title="Document preview" description={`${labelBySlot.get(selectedDocument.doc_type_slot) || selectedDocument.doc_type_slot.replaceAll("_", " ")} · ${selectedDocument.original_name}`}>
+          <div className="case-primary-document-status">
+            <Badge variant={selectedDocument.status === "CONFIRMED" ? "success" : selectedDocument.status === "AI_FAILED" ? "danger" : "warning"}>{selectedDocument.status.replaceAll("_", " ")}</Badge>
+            {selectedDocument.antivirus_status && <Badge variant={selectedDocument.antivirus_status === "CLEAN" ? "success" : "warning"}>{selectedDocument.antivirus_status === "CLEAN" ? "Virus scan clean" : "Virus scan not configured"}</Badge>}
+          </div>
+          {sourcePreviewOpen
+            ? <DocumentEvidencePreview
+              documentId={selectedDocument._id}
+              fileName={selectedDocument.original_name}
+              page={sourcePreviewField?.documentId === selectedDocument._id ? sourcePreviewField.source_page : 1}
+              bbox={sourcePreviewField?.documentId === selectedDocument._id ? sourcePreviewField.source_bbox : undefined}
+              confidence={sourcePreviewField?.documentId === selectedDocument._id ? sourcePreviewField.confidence : undefined}
+              showSourceDetails={sourcePreviewField?.documentId === selectedDocument._id}
+              onClose={() => {
+                setSourcePreviewField(null);
+                setSourcePreviewOpen(false);
+              }}
+            />
+            : <button className="button button-secondary button-small" type="button" onClick={() => setSourcePreviewOpen(true)}>Show document preview</button>}
+        </Card>
+        : <Card className="case-primary-document" title="Document preview" description="No supporting documents have been uploaded for this application.">
+          <div className="state-card"><FileText size={22} /><h3>No documents uploaded</h3><p>Uploaded certificates will appear here.</p></div>
+        </Card>}
+    </div>
+    <div className="case-evidence-workspace case-detail-workspace">
+    <div className="stage-review-documents"><Card title="Selected Documents" description="Choose a certificate and review its extracted fields and verification state."
+    action={<div className="case-document-actions">
+      {editable && <Link className="button button-secondary button-small" to={`/applications/new?caseId=${record._id}`}>Continue draft</Link>}
+    </div>}>
+    {selectedDocument
+      ? <div className="case-document-scroll-region">
+        <div className="case-document-selection-list" aria-label="Application certificates">
+          {documents.map((document) => <button
+            className={`case-document-selection${String(document._id) === String(selectedDocument._id) ? " selected" : ""}`}
+            type="button"
+            key={document._id}
+            aria-pressed={String(document._id) === String(selectedDocument._id)}
+            onClick={() => {
+              setSelectedDocumentId(String(document._id));
+              setSourcePreviewField(null);
+              setSourcePreviewOpen(true);
+            }}
+          >
+            <span className="case-document-selection-copy"><FileText size={17} aria-hidden="true" /><span><strong>{labelBySlot.get(document.doc_type_slot) || document.doc_type_slot.replaceAll("_", " ")}</strong><small>{document.original_name}</small></span></span>
+            <Badge variant={document.status === "CONFIRMED" ? "success" : document.status === "AI_FAILED" ? "danger" : "warning"}>{document.status.replaceAll("_", " ")}</Badge>
+          </button>)}
+        </div>
+        <div className="case-document-list">{[selectedDocument].map((document) => {
           const fields = document.extraction?.fields || [];
           const saved = document.status === "CONFIRMED";
+          const hasVerificationTask = processing?.tasks?.some((task) => task.type === "VERIFY_DOCUMENT" && String(task.documentId) === String(document._id) && ["open", "queued"].includes(task.state));
+          const unresolvedAmbiguities = resolvedAmbiguities[document._id] || [];
           return <article className="case-document-slot" key={document._id}>
             <div className="case-document-slot-heading">
-              <div><h3>{labelBySlot.get(document.doc_type_slot) || document.doc_type_slot.replaceAll("_", " ")}</h3><p>{document.original_name}</p></div>
-              <Badge variant={saved ? "success" : document.status === "AI_FAILED" ? "danger" : "warning"}>{document.status.replaceAll("_", " ")}</Badge>
+              <div>
+                <h3>{labelBySlot.get(document.doc_type_slot) || document.doc_type_slot.replaceAll("_", " ")}</h3>
+                <p>{document.original_name}</p>
+                {document.extraction?.m1_type && <small className="case-m1-type">M1 document type: <strong>{document.extraction.m1_type}</strong> · {Math.round((document.extraction.m1_confidence || 0) * 100)}% confidence</small>}
+              </div>
+              <div className="case-document-statuses">
+                <Badge variant={saved ? "success" : document.status === "AI_FAILED" ? "danger" : "warning"}>{document.status.replaceAll("_", " ")}</Badge>
+                {document.antivirus_status && <Badge variant={document.antivirus_status === "CLEAN" ? "success" : "warning"}>
+                  {document.antivirus_status === "CLEAN" ? "Virus scan clean" : "Virus scan not configured"}
+                </Badge>}
+              </div>
             </div>
+            {document.processingRun && <small className="case-processing-run">
+              AI run {document.processingRun.status}
+              {document.processingRun.modelVersions && ` · ${Object.entries(document.processingRun.modelVersions).map(([name, version]) => `${name.toUpperCase()} ${version || "unavailable"}`).join(" · ")}`}
+              {document.processingRun.errorCode && ` · ${document.processingRun.errorCode}`}
+            </small>}
             {fields.length
               ? <div className="case-extraction-fields">
-                {!editable && <p className="case-extraction-intro">This case has been submitted. Extracted and confirmed values are view-only.</p>}
-                {fields.map((field) => <label className="case-extraction-field" key={field.field_name}>
-                  <strong>{field.field_name.replaceAll("_", " ")}</strong>
-                  <input
-                    aria-label={`${field.field_name.replaceAll("_", " ")} for ${document.original_name}`}
-                    value={fieldValues[`${document._id}:${field.field_name}`] ?? field.confirmed_value ?? field.ai_value ?? ""}
-                    readOnly={!editable || saved}
-                    onChange={(event) => setFieldValues((current) => ({ ...current, [`${document._id}:${field.field_name}`]: event.target.value }))}
-                  />
-                </label>)}
-                {editable && <button className="button button-secondary button-small case-save-fields" disabled={saved || savingDocument === document._id} onClick={() => saveFields(document)}>
-                  {saved ? "Fields saved" : savingDocument === document._id ? "Saving…" : "Save all document fields"}
+                {!editable && !canOverrideConfirmedFields && <p className="case-extraction-intro">This case has been submitted. Extracted and confirmed values are view-only.</p>}
+                {fields.map((field) => {
+                  const key = `${document._id}:${field.field_name}`;
+                  const choices = field.ambiguous ? ambiguousDateChoices(field) : [];
+                  return <div className="case-extraction-field" key={field.field_name}>
+                    <strong>{field.field_name.replaceAll("_", " ")}</strong>
+                    <input
+                      type={/(?:date|valid_to|lease_start|lease_end)$/.test(field.field_name)
+                        && /^\d{4}-\d{2}-\d{2}$/.test(fieldValues[key] ?? field.confirmed_value ?? field.ai_value ?? "")
+                        ? "date" : "text"}
+                      aria-label={`${field.field_name.replaceAll("_", " ")} for ${document.original_name}`}
+                      value={fieldValues[key] ?? field.confirmed_value ?? (field.prefill ? field.ai_value : "") ?? ""}
+                      readOnly={(!editable && !canOverrideConfirmedFields) || saved && !canOverrideConfirmedFields}
+                      onChange={(event) => setFieldValues((current) => ({ ...current, [key]: event.target.value }))}
+                    />
+                    {field.ambiguous && editable && !saved && (choices.length
+                      ? <label className="field-label">Resolve ambiguous date
+                        <select value={unresolvedAmbiguities.includes(field.field_name) ? fieldValues[key] || "" : ""} onChange={(event) => {
+                          const value = event.target.value;
+                          if (!value) return;
+                          setFieldValues((current) => ({ ...current, [key]: value }));
+                          setResolvedAmbiguities((current) => ({ ...current, [document._id]: [...new Set([...(current[document._id] || []), field.field_name])] }));
+                        }}>
+                          <option value="">Choose the confirmed interpretation</option>
+                          {choices.map((choice) => <option value={choice.value} key={choice.value}>{choice.label}</option>)}
+                        </select>
+                      </label>
+                      : <label className="check-inline"><input type="checkbox" checked={unresolvedAmbiguities.includes(field.field_name)} onChange={(event) => setResolvedAmbiguities((current) => ({
+                        ...current,
+                        [document._id]: event.target.checked
+                          ? [...new Set([...(current[document._id] || []), field.field_name])]
+                          : (current[document._id] || []).filter((name) => name !== field.field_name),
+                      }))} />I manually resolved this ambiguous date</label>)}
+                    <small>{field.zone} · {Math.round((field.ai_confidence || 0) * 100)}% confidence{field.source_page ? ` · page ${field.source_page}` : ""}{field.prefill ? " · prefill eligible" : " · manual confirmation required"}</small>
+                    {field.source_bbox?.length === 4 && <small>Source box: {field.source_bbox.join(", ")}</small>}
+                    <small className={field.confirmed_at ? "field-confirmation confirmed" : "field-confirmation pending"}>
+                      {field.confirmed_at ? `CONFIRMED · ${new Date(field.confirmed_at).toLocaleString()}` : "PENDING CONFIRMATION"}
+                    </small>
+                    {field.source_bbox?.length === 4 && <button className="button button-secondary button-small source-preview-trigger" type="button" onClick={() => {
+                      setSourcePreviewField({
+                        documentId: document._id,
+                        source_page: field.source_page || 1,
+                        source_bbox: field.source_bbox,
+                        confidence: field.ai_confidence,
+                      });
+                      setSourcePreviewOpen(true);
+                    }}>Show source highlight</button>}
+                  </div>;
+                })}
+                {(editable || canOverrideConfirmedFields) && <button className="button button-secondary button-small case-save-fields" disabled={saved && !canOverrideConfirmedFields || savingDocument === document._id} onClick={() => saveFields(document)}>
+                  {saved && !canOverrideConfirmedFields ? "Fields saved" : savingDocument === document._id ? "Saving…" : canOverrideConfirmedFields ? "Confirm / override fields" : "Save all document fields"}
                 </button>}
               </div>
               : <p className="muted">{["UPLOADED", "PROCESSING"].includes(document.status) ? "Text detection is still in progress." : "No extracted fields are available for this document."}</p>}
+            {document.status === "QUARANTINED" && <div className="alert alert-warning" role="alert">Quarantined: {document.quarantine_reason || "This file cannot be used or downloaded."}</div>}
+            {canVerifyDocuments && hasVerificationTask && <div className="document-verification-controls">
+              <label className="field-label">Verification reason<textarea value={verificationReasons[document._id] || ""} onChange={(event) => setVerificationReasons((current) => ({ ...current, [document._id]: event.target.value }))} placeholder="Required if this evidence is not verified" /></label>
+              <button className="button button-primary button-small" disabled={savingVerification === document._id} onClick={() => verifyDocument(document, "verified")}>Verify document</button>
+              <button className="button button-danger button-small" disabled={savingVerification === document._id || !(verificationReasons[document._id] || "").trim()} onClick={() => verifyDocument(document, "not_verified")}>Mark not verified</button>
+            </div>}
             {document.extraction?.extracted_lines?.length > 0 && <details className="case-ocr-text">
               <summary>View detected text ({document.extraction.extracted_lines.length} lines)</summary>
               <ol>{document.extraction.extracted_lines.map((line, index) => <li key={`${document._id}-${index}`}>{line}</li>)}</ol>
             </details>}
           </article>;
-        })}</div>
-        : <div className="state-card"><FileText size={22} /><h3>No documents uploaded</h3><p>Documents uploaded for this application will appear here.</p>{editable && <Link className="button button-primary" to="/applications/new">Continue draft</Link>}</div>}
+        })}</div></div>
+        : <div className="state-card"><FileText size={22} /><h3>No documents uploaded</h3><p>Documents uploaded for this application will appear here.</p></div>}
     </Card>
+    </div>
+    </div>
     {!editable && <div className="note info-note">Submitted application documents and extracted fields cannot be changed here.</div>}
+    {record.workflowVersion && <div className="case-stage-actions"><StageWorkflowPanel
+          record={record}
+          role={backendRole}
+          user={user}
+          documents={documents}
+          canConfirmFields={editable || canOverrideConfirmedFields}
+          savingDocument={savingDocument}
+          onConfirmFields={saveFields}
+          showExtractedFields={false}
+          showStepper={false}
+          showHeading={false}
+        /></div>}
+    {!record.workflowVersion && record.status !== "draft" && (record.currentStage === "evc" && ["EVC member", "EVC chairman"].includes(role)
+      || record.currentStage !== "evc" && record.stageRequirements?.length > 0 && isCurrentHolder) && <Card className="case-legacy-stage-actions" title="Stage actions" description={currentStage}>
+      {!record.workflowVersion && record.currentStage === "evc" && ["EVC member", "EVC chairman"].includes(role) && <label className="field-label">Upload EVC report<input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={submitting} onChange={(event) => uploadEvcReport(event.target.files?.[0])} /></label>}
+      {!record.workflowVersion && record.currentStage !== "evc" && record.stageRequirements?.length > 0 && isCurrentHolder && <div className="stage-completion">
+        {record.stageRequirements.map((requirement) => <label className="check-inline" key={requirement}>
+          <input type="checkbox" checked={stageChecks.includes(requirement)} onChange={(event) => setStageChecks((current) => event.target.checked
+            ? [...new Set([...current, requirement])]
+            : current.filter((item) => item !== requirement))} />
+          {requirement.replaceAll("_", " ")}
+        </label>)}
+        <button className="button button-primary" disabled={submitting || record.stageRequirements.some((item) => !stageChecks.includes(item))} onClick={advanceStage}>
+          {submitting ? "Advancing…" : "Complete stage and advance"}
+        </button>
+      </div>}
+    </Card>}
+    {historyOpen && <div className="case-history-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) setHistoryOpen(false);
+    }}>
+      <section className="case-history-dialog" role="dialog" aria-modal="true" aria-labelledby="case-history-title">
+        <header><div><p className="eyebrow">CASE RECORD</p><h2 id="case-history-title">Case history</h2><p>{record.caseNo} · stage transitions</p></div><button className="icon-button" type="button" aria-label="Close case history" onClick={() => setHistoryOpen(false)}><X size={18} /></button></header>
+        {historyLoading
+          ? <div className="loading-state"><i /><i /><i /></div>
+          : historyError
+            ? <div className="alert alert-warning" role="alert">{historyError}</div>
+            : caseHistory.length
+              ? <ol className="case-history-list">{caseHistory.map((entry) => <li key={entry._id}>
+                <span className="case-history-marker" />
+                <div><strong>{entry.fromStage ? `${caseStageLabels[entry.fromStage] || entry.fromStage} → ` : ""}{caseStageLabels[entry.toStage] || entry.toStage}</strong>
+                  <small>{entry.holderType?.replaceAll("_", " ")} · {entry.enteredAt ? new Date(entry.enteredAt).toLocaleString() : "Time not recorded"}</small>
+                  {entry.leftAt && <small>Stage ended {new Date(entry.leftAt).toLocaleString()}</small>}
+                  {entry.reason && <p>{entry.reason}</p>}
+                </div>
+              </li>)}</ol>
+              : <p className="muted">No stage transitions have been recorded for this case.</p>}
+      </section>
+    </div>}
   </>;
 }
 
@@ -957,7 +1613,7 @@ const ruleDescriptions = {
   ESCALATION: "Configure the delay before workflow escalation.",
 };
 
-const institutionRoles = new Set(["INSTITUTION", "STUDENT", "FACULTY"]);
+const institutionRoles = new Set(["INSTITUTION", "STUDENT", "FACULTY", "GRIEVANCE_OFFICER"]);
 const userStatuses = ["ACTIVE", "PENDING_VERIFICATION", "LOCKED", "DISABLED"];
 const initialUserForm = {
   name: "",
@@ -981,7 +1637,24 @@ function AlertRules({ usersOnly = false, setMessage }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialUserForm);
   const [userError, setUserError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [basisFilter, setBasisFilter] = useState("ALL");
   const currentUserId = useAppStore((state) => state.user?.id);
+  const summary = useMemo(() => {
+    const total = rules.length;
+    const enabled = rules.filter((rule) => rule.enabled).length;
+    const real = rules.filter((rule) => rule.basis === "REAL").length;
+    return { total, enabled, real, disabled: total - enabled };
+  }, [rules]);
+  const basisOptions = useMemo(() => ["ALL", ...new Set(rules.map((rule) => rule.basis).filter(Boolean))], [rules]);
+  const filteredRules = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return rules.filter((rule) => {
+      const matchesQuery = !query || [rule.rule_id, ruleDescriptions[rule.rule_id] || "", JSON.stringify(rule.params_json || {})].some((value) => String(value).toLowerCase().includes(query));
+      const matchesBasis = basisFilter === "ALL" || rule.basis === basisFilter;
+      return matchesQuery && matchesBasis;
+    });
+  }, [basisFilter, rules, searchQuery]);
 
   async function load() {
     setLoading(true);
@@ -1067,18 +1740,65 @@ function AlertRules({ usersOnly = false, setMessage }) {
   }
 
   if (!usersOnly) {
-    return <Card title="Configured validation rules" description="These settings are read from the backend. Changes are saved to the database and applied by document validation.">
-      {error && <p className="login-error" role="alert">{error}</p>}
-      <div className="table-wrap"><table className="data-table"><thead><tr><th>Rule</th><th>Purpose</th><th>Basis</th><th>Parameters</th><th>Status</th></tr></thead>
-        <tbody>{rules.map((rule) => <tr key={rule.rule_id}>
-          <td><strong>{rule.rule_id}</strong></td>
-          <td>{ruleDescriptions[rule.rule_id] || "Backend validation rule."}</td>
-          <td><Badge variant={rule.basis === "REAL" ? "info" : "warning"}>{rule.basis}</Badge></td>
-          <td><code>{JSON.stringify(rule.params_json || {})}</code></td>
-          <td><label className="admin-rule-toggle"><input type="checkbox" checked={rule.enabled} disabled={busy} onChange={() => changeRule(rule)} />{rule.enabled ? "Enabled" : "Disabled"}</label></td>
-        </tr>)}</tbody>
-      </table></div>
-    </Card>;
+    return <div className="alert-rules-page">
+      <div className="alert-rules-summary">
+        <div className="alert-rules-stat">
+          <span className="alert-rules-stat-label">Total rules</span>
+          <strong>{summary.total}</strong>
+          <small>{summary.enabled} currently active</small>
+        </div>
+        <div className="alert-rules-stat accent">
+          <span className="alert-rules-stat-label">Enabled</span>
+          <strong>{summary.enabled}</strong>
+          <small>Ready for live checks</small>
+        </div>
+        <div className="alert-rules-stat warning">
+          <span className="alert-rules-stat-label">Real basis</span>
+          <strong>{summary.real}</strong>
+          <small>Production-backed logic</small>
+        </div>
+        <div className="alert-rules-stat neutral">
+          <span className="alert-rules-stat-label">Disabled</span>
+          <strong>{summary.disabled}</strong>
+          <small>Temporarily inactive</small>
+        </div>
+      </div>
+
+      <section className="alert-rules-panel card" aria-label="Configured validation rules">
+        <div className="card-heading alert-rules-header">
+          <div>
+            <p className="eyebrow">Validation controls</p>
+            <h2>Configured validation rules</h2>
+            <p>These settings are read from the backend. Changes are saved to the database and applied by document validation.</p>
+          </div>
+          <button className="button button-secondary button-small" onClick={load}><RefreshCw size={14} /> Refresh</button>
+        </div>
+
+        <div className="alert-rules-toolbar">
+          <label className="alert-rules-search">
+            <Search size={14} />
+            <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search rules or parameters" aria-label="Search validation rules" />
+          </label>
+          <label className="alert-rules-filter">
+            <span>Basis</span>
+            <select value={basisFilter} onChange={(event) => setBasisFilter(event.target.value)} aria-label="Filter validation rules by basis">
+              {basisOptions.map((option) => <option value={option} key={option}>{option === "ALL" ? "All basis" : option}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {error && <p className="login-error" role="alert">{error}</p>}
+        <div className="table-wrap alert-rules-table-wrap"><table className="data-table"><thead><tr><th>Rule</th><th>Purpose</th><th>Basis</th><th>Parameters</th><th>Status</th></tr></thead>
+          <tbody>{filteredRules.length ? filteredRules.map((rule) => <tr key={rule.rule_id} className="alert-rule-row">
+            <td><div className="rule-cell"><span className="rule-code">{rule.rule_id}</span><small>{rule.enabled ? "Live" : "Paused"}</small></div></td>
+            <td><div className="rule-description"><strong>{ruleDescriptions[rule.rule_id] || "Backend validation rule."}</strong><small>{rule.rule_id} · validation logic</small></div></td>
+            <td><Badge variant={rule.basis === "REAL" ? "info" : "warning"}>{rule.basis}</Badge></td>
+            <td><code>{JSON.stringify(rule.params_json || {})}</code></td>
+            <td><label className="admin-rule-toggle"><input type="checkbox" checked={rule.enabled} disabled={busy} onChange={() => changeRule(rule)} /><span className="toggle-pill">{rule.enabled ? "Enabled" : "Disabled"}</span></label></td>
+          </tr>) : <tr><td className="empty-cell" colSpan={5}>No rules match the current filters.</td></tr>}</tbody>
+        </table></div>
+      </section>
+    </div>;
   }
 
   return <div className="admin-users-page">
@@ -1145,7 +1865,7 @@ function ReportsAndFallback({ kind, data, setMessage, usersOnly }) {
   if (kind === "audit") return <AuditPage data={data} />;
   if (kind === "queue") return <QueueLive data={data} />;
   if (kind === "caseControl") return <CaseControl />;
-  if (kind === "verification") return <DocumentsLive title="Evidence in your authorized case scope" allowNewApplication={false} />;
+  if (kind === "verification") return <VerificationWorkspace cases={data.cases} />;
   if (kind === "evc") return <EvcVisitsLive data={data} />;
   if (kind === "hearings") return <HearingsLive data={data} />;
   if (kind === "decisions") return <DecisionsLive data={data} setMessage={setMessage} />;
@@ -1159,7 +1879,10 @@ function ReportsAndFallback({ kind, data, setMessage, usersOnly }) {
 
 export default function DomainWorkspace({ kind, usersOnly = false }) {
   const { pathname } = useLocation();
-  const config = kind === "alertRules" && usersOnly
+  const { applicationId } = useParams();
+  const config = kind === "documents" && applicationId
+    ? { ...pageSettings.documents, title: "Application Documents", description: "Review uploaded documents, verification status, and extracted fields for this application.", eyebrow: "DOCUMENT REGISTER" }
+    : kind === "alertRules" && usersOnly
     ? { ...pageSettings.alertRules, title: "Users and roles", description: "Create accounts, review stored roles, and manage account status." }
     : kind === "evc" && pathname === "/evc/visits"
       ? { ...pageSettings.evc, title: "My EVC visits", description: "View scheduled committee visits and upcoming appointments." }
@@ -1184,14 +1907,19 @@ export default function DomainWorkspace({ kind, usersOnly = false }) {
     }
   }, [kind, backendRole]);
 
-  const action = kind === "dashboard" ? <Link className="button button-primary" to="/applications/new"><Plus size={16} /> New application</Link> : null;
+  const action = kind === "dashboard"
+    ? <Link className="button button-primary" to="/applications/new"><Plus size={16} /> New application</Link>
+    : kind === "documents" && applicationId
+      ? <Link className="button button-secondary button-small" to="/documents"><ArrowLeft size={15} /> Back to applications</Link>
+      : null;
   if (kind === "alertRules") return <><PageHeading config={config} /><ReportsAndFallback kind={kind} data={data} setMessage={setMessage} usersOnly={usersOnly} /><Toast message={message} onClose={() => setMessage("")} /></>;
+  if (kind === "caseControl") return <><ReportsAndFallback kind={kind} data={data} setMessage={setMessage} usersOnly={usersOnly} /><Toast message={message} onClose={() => setMessage("")} /></>;
   if (!data) return <><PageHeading config={config} action={action} /><BusyState error={error} onRetry={load} /></>;
 
   return <><PageHeading config={config} action={action} />
     {kind === "dashboard" ? <Dashboard data={data} reload={load} /> :
       kind === "application" ? <NewApplication data={data} setMessage={setMessage} /> :
-      kind === "documents" || kind === "documentReview" ? <DocumentsLive /> :
+      kind === "documents" || kind === "documentReview" ? <DocumentsLive title={config.title} allowNewApplication={kind === "documents"} /> :
       kind === "design" ? <DesignSystem /> :
       <ReportsAndFallback kind={kind} data={data} setMessage={setMessage} usersOnly={usersOnly} />}
     <Toast message={message} onClose={() => setMessage("")} />

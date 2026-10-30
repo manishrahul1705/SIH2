@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import AppShell, { roleHome } from "../layouts/AppShell";
 import { authApi } from "../services/auth";
@@ -16,7 +16,7 @@ import AuditPage from "../pages/P03Audit";
 import QueuePage from "../pages/P11OfficerQueue";
 import CaseControlPage from "../pages/P12CaseControl";
 import VerificationPage from "../pages/P13Verification";
-import EvcPage from "../pages/P14Evc";
+import EvcVisitsPage from "../pages/evc/EvcVisitsPage";
 import HearingsPage from "../pages/P15Hearings";
 import DecisionsPage from "../pages/P16Decisions";
 import RegionPage from "../pages/P17Region";
@@ -37,6 +37,26 @@ import StatutoryCommitteesPage from "../pages/student/StatutoryCommitteesPage";
 import DepartmentRosterPage from "../pages/faculty/DepartmentRosterPage";
 import FacultyYearlyReportFormPage from "../pages/faculty/FacultyYearlyReportFormPage";
 import FacultyYearlyReportsHistoryPage from "../pages/faculty/FacultyYearlyReportsHistoryPage";
+import AnnouncementFeedPage from "../pages/shared/AnnouncementFeedPage";
+import GovernancePage from "../pages/admin/GovernancePage";
+import AdminCollegeGrievances from "../pages/admin/AdminCollegeGrievances";
+import CollegeGrievanceInbox from "../pages/institution/CollegeGrievanceInbox";
+import AdminIncidentMonitoringPage from "../pages/admin/AdminIncidentMonitoringPage";
+import GrievanceQueuePage from "../pages/grievances/GrievanceQueuePage";
+import InstitutionAnnualReportPage from "../pages/institution/InstitutionAnnualReportPage";
+import AssistRequestsPage from "../pages/AssistRequestsPage";
+import BureauApprovalQueuePage from "../pages/BureauApprovalQueuePage";
+import EvcDashboard from "../pages/evc/EvcDashboard";
+
+function RoleDashboard() {
+  const role = useAppStore((state) => state.role);
+  return role === "EVC member" || role === "EVC chairman" ? <EvcDashboard /> : <DashboardPage />;
+}
+
+function LegacyEvcCaseRedirect() {
+  const { caseId } = useParams();
+  return <Navigate to={`/cases/${caseId}`} replace />;
+}
 
 function Guard({ allowed, children, wrapShell = true }) {
   const role = useAppStore((state) => state.role);
@@ -51,6 +71,7 @@ function Guard({ allowed, children, wrapShell = true }) {
 
 const institution = ["Institution user"];
 const officers = ["Scrutiny / Regional officer"];
+const evcRoles = ["EVC member", "EVC chairman"];
 const authorities = ["Competent authority", "Senior authority"];
 const oversight = [...officers, ...authorities, "Admin"];
 
@@ -78,22 +99,31 @@ export default function App() {
   return <Routes>
     <Route path="/login" element={signedIn ? <Navigate to={home} replace /> : <LoginPage />} />
     <Route path="/" element={<Navigate to={signedIn ? home : "/login"} replace />} />
-    <Route path="/dashboard" element={<Guard allowed={institution}><DashboardPage /></Guard>} />
+    <Route path="/dashboard" element={<Guard allowed={[...institution, ...evcRoles]}><RoleDashboard /></Guard>} />
+    <Route path="/institution-annual-report" element={<Guard allowed={institution}><InstitutionAnnualReportPage /></Guard>} />
+    <Route path="/institution/complaints" element={<Guard allowed={institution}><CollegeGrievanceInbox /></Guard>} />
     <Route path="/applications/new" element={<Guard allowed={institution}><ApplicationPage /></Guard>} />
-    <Route path="/cases" element={<Guard allowed={[...institution, ...officers]}><CasesPage /></Guard>} />
+    <Route path="/cases" element={<Guard allowed={[...institution, ...officers, ...evcRoles, "SAC/SHC member", ...authorities, "Admin"]}><CasesPage /></Guard>} />
+    <Route path="/cases/:caseId" element={<Guard allowed={evcRoles}><CasesPage /></Guard>} />
     <Route path="/documents" element={<Guard allowed={institution}><DocumentsPage /></Guard>} />
+    <Route path="/documents/:applicationId" element={<Guard allowed={[...institution, ...officers]}><DocumentsPage /></Guard>} />
     <Route path="/document-review" element={<Guard allowed={[...institution, ...officers]}><DocumentReviewPage /></Guard>} />
     <Route path="/undertakings" element={<Guard allowed={institution}><UndertakingsPage /></Guard>} />
     <Route path="/deficiencies" element={<Guard allowed={institution}><DeficienciesPage /></Guard>} />
-    <Route path="/notifications" element={<Guard allowed={["Institution user", ...officers, "EVC member", "SAC/SHC member", ...authorities, "Senior authority", "Admin"]}><NotificationsPage /></Guard>} />
+    <Route path="/notifications" element={<Guard allowed={["Institution user", ...officers, ...evcRoles, "SAC/SHC member", ...authorities, "Senior authority", "Admin"]}><NotificationsPage /></Guard>} />
     <Route path="/audit" element={<Guard allowed={["Admin"]}><AuditPage /></Guard>} />
     <Route path="/queue" element={<Guard allowed={officers}><QueuePage /></Guard>} />
-    <Route path="/case/:caseId" element={<Guard allowed={["Institution user", ...officers, "EVC member", "SAC/SHC member", ...authorities, "Admin"]}><CaseControlPage /></Guard>} />
+    <Route path="/case/:caseId" element={<Guard allowed={["Institution user", ...officers, ...evcRoles, "SAC/SHC member", ...authorities, "Admin"]}><CaseControlPage /></Guard>} />
+    <Route path="/assist-requests" element={<Guard allowed={["Institution user", ...officers, ...evcRoles, "SAC/SHC member", ...authorities, "Admin"]}><AssistRequestsPage /></Guard>} />
     <Route path="/verification" element={<Guard allowed={officers}><VerificationPage /></Guard>} />
-    <Route path="/evc" element={<Guard allowed={["EVC member", ...officers]}><EvcPage /></Guard>} />
-    <Route path="/evc/visits" element={<Guard allowed={["EVC member", ...officers]}><EvcPage /></Guard>} />
+    <Route path="/evc" element={<Navigate to="/dashboard" replace />} />
+    <Route path="/evc/cases" element={<Navigate to="/dashboard" replace />} />
+    <Route path="/evc/cases/:caseId" element={<LegacyEvcCaseRedirect />} />
+    <Route path="/evc/visits" element={<Guard allowed={evcRoles}><EvcVisitsPage /></Guard>} />
     <Route path="/hearings" element={<Guard allowed={["SAC/SHC member"]}><HearingsPage /></Guard>} />
-    <Route path="/decisions" element={<Guard allowed={["Competent authority"]}><DecisionsPage /></Guard>} />
+    <Route path="/decisions" element={<Guard allowed={["Admin"]}><DecisionsPage /></Guard>} />
+    <Route path="/admin/incidents" element={<Guard allowed={["Admin"]}><AdminIncidentMonitoringPage /></Guard>} />
+    <Route path="/bureau/approvals" element={<Guard allowed={["Competent authority"]}><BureauApprovalQueuePage /></Guard>} />
     <Route path="/region" element={<Guard allowed={authorities}><RegionPage /></Guard>} />
     <Route path="/reports" element={<Guard allowed={authorities}><ReportsPage /></Guard>} />
     <Route path="/escalations" element={<Guard allowed={["Senior authority"]}><EscalationsPage /></Guard>} />
@@ -102,11 +132,15 @@ export default function App() {
     <Route path="/users" element={<Guard allowed={["Admin"]}><AlertRulesPage usersOnly /></Guard>} />
     <Route path="/ai-service" element={<Guard allowed={["Admin"]}><AiServicePage /></Guard>} />
     <Route path="/design-system" element={<Guard allowed={["Admin"]}><DesignSystemPage /></Guard>} />
+    <Route path="/governance" element={<Guard allowed={["Admin"]}><GovernancePage /></Guard>} />
+    <Route path="/admin/grievances" element={<Guard allowed={["Admin"]}><AdminCollegeGrievances /></Guard>} />
+    <Route path="/grievances" element={<Guard allowed={["Grievance officer", "Ombudsperson"]}><GrievanceQueuePage /></Guard>} />
     <Route path="/student" element={<Guard allowed={["Student"]} wrapShell={false}><StakeholderLayout /></Guard>}>
       <Route index element={<Navigate to="college-overview" replace />} />
       <Route path="college-overview" element={<CollegeOverviewPage />} />
       <Route path="offerings" element={<ApprovedOfferingsPage />} />
       <Route path="facilities" element={<CampusFacilitiesPage />} />
+      <Route path="announcements" element={<AnnouncementFeedPage />} />
       <Route path="complaints/new" element={<ComplaintFormPage />} />
       <Route path="complaints" element={<ComplaintsTrackerPage />} />
       <Route path="committees" element={<StatutoryCommitteesPage />} />
@@ -116,11 +150,15 @@ export default function App() {
       <Route path="college-overview" element={<CollegeOverviewPage />} />
       <Route path="offerings" element={<ApprovedOfferingsPage />} />
       <Route path="facilities" element={<CampusFacilitiesPage />} />
+      <Route path="announcements" element={<AnnouncementFeedPage />} />
       <Route path="department-roster" element={<DepartmentRosterPage />} />
       <Route path="yearly-report/new" element={<FacultyYearlyReportFormPage />} />
       <Route path="yearly-reports" element={<FacultyYearlyReportsHistoryPage />} />
       <Route path="complaints/new" element={<ComplaintFormPage />} />
       <Route path="complaints" element={<ComplaintsTrackerPage />} />
+    </Route>
+    <Route path="/portal" element={<Guard allowed={["Student", "Faculty"]} wrapShell={false}><StakeholderLayout /></Guard>}>
+      <Route path="my-complaints" element={<ComplaintsTrackerPage />} />
     </Route>
     <Route path="*" element={<AppShell><AccessDenied notFound /></AppShell>} />
   </Routes>;

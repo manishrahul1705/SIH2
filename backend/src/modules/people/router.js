@@ -1,7 +1,8 @@
 import express from "express";
 import { z } from "zod";
-import { Faculty, Institution, Student, User } from "../../models/index.js";
-import { writeAudit } from "../../middleware/audit.js";
+import { randomUUID } from "node:crypto";
+import { Faculty, Institution, OutboxEvent, Student } from "../../models/index.js";
+import { withTransaction, writeAudit } from "../../middleware/audit.js";
 import { authenticate, requireRole } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 
@@ -34,6 +35,31 @@ const facultyPatch = facultyCreate.partial().strict();
 
 function respond(res, req, data, meta = {}) {
   return res.json({ data, error: null, meta: { requestId: req.id, ...meta } });
+}
+
+async function recordPeopleMutation(req, { actorId, action, entity, eventType, mutate, before, payload }) {
+  return withTransaction(async (session) => {
+    const record = await mutate(session);
+    if (!record) return null;
+    const eventPayload = typeof payload === "function" ? payload(record) : payload;
+    await OutboxEvent.create([{
+      eventId: randomUUID(),
+      eventType,
+      entityId: String(record._id),
+      payload: eventPayload,
+      publishedAt: null,
+    }], { session });
+    await writeAudit({
+      actor_id: actorId,
+      action,
+      entity,
+      entity_id: record._id,
+      ...(typeof before === "function" ? { before_json: before(record) } : before ? { before_json: before } : {}),
+      after_json: eventPayload,
+      ip: req.ip,
+    }, { session });
+    return record;
+  });
 }
 
 function parseListQuery(req, res, next) {
@@ -112,8 +138,18 @@ function createPeopleRouter(kind) {
       if (!institutionId || (req.user.role === "ADMIN" && !objectIdSchema.safeParse(String(institutionId)).success)) {
         return res.status(400).json({ data: null, error: { code: "INSTITUTION_REQUIRED", message: "A valid institution is required" }, meta: { requestId: req.id } });
       }
-      const record = await Model.create({ ...req.body, institution_id: institutionId });
-      await writeAudit({ actor_id: req.user._id, action: `${kind.toUpperCase()}_CREATED`, entity: isStudent ? "Student" : "Faculty", entity_id: record._id, after_json: record.toObject(), ip: req.ip });
+      const entity = isStudent ? "Student" : "Faculty";
+      const record = await recordPeopleMutation(req, {
+        actorId: req.user._id,
+        action: `${kind.toUpperCase()}_CREATED`,
+        entity,
+        eventType: `${kind}.created`,
+        mutate: async (session) => {
+          const [created] = await Model.create([{ ...req.body, institution_id: institutionId }], { session });
+          return created;
+        },
+        payload: (created) => ({ profileId: String(created._id), institutionId: String(created.institution_id), profileType: kind }),
+      });
       return res.status(201).json({ data: record, error: null, meta: { requestId: req.id } });
     } catch (error) { return next(error); }
   });
@@ -144,10 +180,23 @@ function createPeopleRouter(kind) {
         update = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
         filter = { _id: own._id, institution_id: own.institution_id, deleted_at: null };
       } else if (req.user.role !== "ADMIN") filter.institution_id = (await institutionScope(req))?.institution_id;
-      const before = await Model.findOne(filter).lean();
-      if (!before) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Record not found" }, meta: { requestId: req.id } });
-      const record = await Model.findOneAndUpdate(filter, { $set: update }, { new: true, runValidators: true });
-      await writeAudit({ actor_id: req.user._id, action: `${kind.toUpperCase()}_UPDATED`, entity: isStudent ? "Student" : "Faculty", entity_id: record._id, before_json: before, after_json: record.toObject(), ip: req.ip });
+      const entity = isStudent ? "Student" : "Faculty";
+      const record = await recordPeopleMutation(req, {
+        actorId: req.user._id,
+        action: `${kind.toUpperCase()}_UPDATED`,
+        entity,
+        eventType: `${kind}.updated`,
+        mutate: async (session) => {
+          const current = await Model.findOne(filter).session(session);
+          if (!current) return null;
+          Object.assign(current, update);
+          await current.save({ session });
+          return current;
+        },
+        before: () => ({ updatedFields: Object.keys(update).sort() }),
+        payload: (updatedRecord) => ({ profileId: String(updatedRecord._id), institutionId: String(updatedRecord.institution_id), profileType: kind, updatedFields: Object.keys(update).sort() }),
+      });
+      if (!record) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Record not found" }, meta: { requestId: req.id } });
       return respond(res, req, record);
     } catch (error) { return next(error); }
   });
@@ -156,9 +205,22 @@ function createPeopleRouter(kind) {
     try {
       const filter = { _id: req.params.id, deleted_at: null };
       if (req.user.role !== "ADMIN") filter.institution_id = (await institutionScope(req))?.institution_id;
-      const record = await Model.findOneAndUpdate(filter, { $set: { deleted_at: new Date() } }, { new: true });
+      const entity = isStudent ? "Student" : "Faculty";
+      const record = await recordPeopleMutation(req, {
+        actorId: req.user._id,
+        action: `${kind.toUpperCase()}_SOFT_DELETED`,
+        entity,
+        eventType: `${kind}.soft_deleted`,
+        mutate: async (session) => {
+          const current = await Model.findOne(filter).session(session);
+          if (!current) return null;
+          current.deleted_at = new Date();
+          await current.save({ session });
+          return current;
+        },
+        payload: (deletedRecord) => ({ profileId: String(deletedRecord._id), institutionId: String(deletedRecord.institution_id), profileType: kind, deletedAt: deletedRecord.deleted_at }),
+      });
       if (!record) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Record not found" }, meta: { requestId: req.id } });
-      await writeAudit({ actor_id: req.user._id, action: `${kind.toUpperCase()}_SOFT_DELETED`, entity: isStudent ? "Student" : "Faculty", entity_id: record._id, after_json: { deleted_at: record.deleted_at }, ip: req.ip });
       return respond(res, req, { deleted: true });
     } catch (error) { return next(error); }
   });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildChecklist, CHECKLIST_SLOTS, DEFAULT_APPLICABILITY, missingChecklistItems, normalizeApplicability } from "../src/engine/checklist.js";
 import { buildCaseRoute, returnTargetIsEarlier } from "../src/engine/routes.js";
 import { computeActionScore, projectActionScore } from "../src/engine/score.js";
-import { orderOfficerQueue } from "../src/engine/queue.js";
+import { chooseLeastLoadedOfficer, orderOfficerQueue } from "../src/engine/queue.js";
 import {
   addOwnershipInterval,
   closesRenewalObligation,
@@ -49,6 +49,13 @@ describe("workflow routes and checklist configuration", () => {
     expect(returnTargetIsEarlier(route, "scrutiny", "unknown")).toBe(false);
   });
 
+  it("assigns scrutiny to the least-loaded officer and breaks ties by user id", () => {
+    const officers = [{ _id: "b" }, { _id: "a" }, { _id: "c" }];
+    expect(chooseLeastLoadedOfficer(officers, new Map([["a", 3], ["b", 1], ["c", 1]]))._id).toBe("b");
+    expect(chooseLeastLoadedOfficer([{ _id: "b" }, { _id: "a" }], new Map())._id).toBe("a");
+    expect(chooseLeastLoadedOfficer([], new Map())).toBeNull();
+  });
+
   it("marks unknown applicability for review rather than silently deducting", () => {
     const checklist = buildChecklist("new_course", {});
     expect(checklist.find((item) => item.slotId === "lease")).toMatchObject({ status: "review_required", required: false, reviewRequired: true });
@@ -57,7 +64,8 @@ describe("workflow routes and checklist configuration", () => {
       { required: true, status: "uploaded" },
       { required: true, status: "pending_confirmation" },
       { required: true, status: "confirmed" },
-    ])).toHaveLength(2);
+      { required: true, status: "quarantined" },
+    ])).toMatchObject([{ status: "quarantined" }]);
     expect(checklist.find((item) => item.slotId === "collaboration_agreement")).toMatchObject({ status: "not_applicable" });
     expect(CHECKLIST_SLOTS.find((item) => item.slotId === "lease")).toMatchObject({ tracked: true, hasValidity: true, minLeaseTermYears: null });
   });

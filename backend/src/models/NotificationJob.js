@@ -4,7 +4,7 @@ import { baseOptions, mixed, objectId, registerModel } from "./common.js";
 const notificationJobSchema = new mongoose.Schema({
   type: { type: String, required: true, trim: true, index: true },
   channel: { type: String, enum: ["EMAIL", "SMS", "IN_APP"], required: true },
-  to_user_id: { type: objectId, ref: "User", required: true, index: true },
+  to_user_id: { type: objectId, ref: "User", default: null, index: true },
   payload_json: { type: mixed, default: {} },
   dedupe_key: { type: String, required: true, trim: true },
   run_at: { type: Date, required: true, default: Date.now },

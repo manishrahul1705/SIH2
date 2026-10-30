@@ -7,10 +7,15 @@ import {
   Application,
   AuditLog,
   CaseObligation,
+  Complaint,
+  Announcement,
   Document,
+  DocumentText,
   Faculty,
   NotificationJob,
   OutboxEvent,
+  PendingItem,
+  ProcessingRun,
   Session,
   StageHistory,
   Student,
@@ -55,9 +60,44 @@ describe("foundation API", () => {
     expect(response.status).toBe(401);
   });
 
+  it("protects complaint, announcement, and live-score routes without a session", async () => {
+    const responses = await Promise.all([
+      request(app).get("/api/v1/complaints"),
+      request(app).post("/api/v1/complaints").set("X-Requested-With", "XMLHttpRequest").send({ category: "OTHER", subject: "Fee complaint", description: "A sufficiently detailed complaint description." }),
+      request(app).get("/api/v1/announcements"),
+      request(app).post("/api/v1/announcements").set("X-Requested-With", "XMLHttpRequest").send({ title: "Test notice", body: "A sufficiently long announcement body." }),
+      request(app).get("/api/v1/dashboard/action-score"),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([401, 401, 401, 401, 401]);
+  });
+
   it("protects the case event stream with session authentication", async () => {
     const response = await request(app).get("/api/v1/cases/events");
     expect(response.status).toBe(401);
+  });
+
+  it("protects EVC case queues and actions with session authentication", async () => {
+    const responses = await Promise.all([
+      request(app).get("/api/v1/evc/cases?tab=waiting_inspection"),
+      request(app).get("/api/v1/evc/cases/507f1f77bcf86cd799439011"),
+      request(app).post("/api/v1/evc/cases/507f1f77bcf86cd799439011/schedule-inspection")
+        .set("X-Requested-With", "XMLHttpRequest")
+        .send({ expectedVersion: 0, scheduled_inspection_date: "2026-10-30", inspection_mode: "PHYSICAL" }),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([401, 401, 401]);
+  });
+
+  it("registers the intake pipeline endpoints behind authentication", async () => {
+    const responses = await Promise.all([
+      request(app).get("/api/v1/cases/507f1f77bcf86cd799439011/findings"),
+      request(app).get("/api/v1/cases/507f1f77bcf86cd799439011/processing"),
+      request(app).post("/api/v1/cases/507f1f77bcf86cd799439011/resubmit").set("X-Requested-With", "XMLHttpRequest").send({ expectedVersion: 1 }),
+      request(app).post("/api/v1/cases/507f1f77bcf86cd799439011/pipeline/evaluate").set("X-Requested-With", "XMLHttpRequest").send({}),
+      request(app).get("/api/v1/documents/507f1f77bcf86cd799439011/analysis"),
+      request(app).post("/api/v1/documents/507f1f77bcf86cd799439011/reanalyze").set("X-Requested-With", "XMLHttpRequest").send({}),
+      request(app).post("/api/v1/documents/507f1f77bcf86cd799439011/verify").set("X-Requested-With", "XMLHttpRequest").send({ verification: "verified" }),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([401, 401, 401, 401, 401, 401, 401]);
   });
 
   it("protects case document uploads with session authentication", async () => {
@@ -135,13 +175,31 @@ describe("foundation model indexes and safeguards", () => {
     expect(hasIndex(AuditLog, { entity: 1, entity_id: 1, createdAt: -1 })).toBe(true);
     expect(hasIndex(Document, { application_id: 1, doc_type_slot: 1, version: 1 }, { unique: true })).toBe(true);
     expect(hasIndex(Document, { case_id: 1, doc_type_slot: 1, version: 1 }, { unique: true })).toBe(true);
+    expect(hasIndex(DocumentText, { fileHash: 1, ocrVersion: 1 }, { unique: true })).toBe(true);
+    expect(hasIndex(ProcessingRun, { documentId: 1, createdAt: -1 })).toBe(true);
     expect(hasIndex(OutboxEvent, { entityId: 1, createdAt: 1, eventId: 1 })).toBe(true);
+    expect(hasIndex(Complaint, { institution_id: 1, status: 1, createdAt: -1 })).toBe(true);
+    expect(hasIndex(Announcement, { published: 1, publish_at: -1, expires_at: 1 })).toBe(true);
   });
 
   it("enables optimistic concurrency for applications and documents", async () => {
     expect(Application.schema.options.optimisticConcurrency).toBe(true);
     expect(Document.schema.options.optimisticConcurrency).toBe(true);
     expect(CaseObligation.schema.options.optimisticConcurrency).toBe(true);
+  });
+
+  it("persists institution responses on resolved pending items", async () => {
+    const item = new PendingItem({
+      application_id: "507f1f77bcf86cd799439011",
+      description: "Submit the updated safety certificate",
+      raised_by: "507f1f77bcf86cd799439012",
+      due_date: new Date("2026-11-30T00:00:00.000Z"),
+      response: "The updated certificate is attached.",
+    });
+    await expect(item.validate()).resolves.toBeUndefined();
+    expect(item.toObject().response).toBe("The updated certificate is attached.");
+    expect(() => item.set("response", "x".repeat(3001))).not.toThrow();
+    await expect(item.validate()).rejects.toHaveProperty("errors.response");
   });
 
   it("requires each document to belong to exactly one application or case", async () => {

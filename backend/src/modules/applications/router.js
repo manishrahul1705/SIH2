@@ -1,11 +1,12 @@
 import express from "express";
+import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { APPLICATION_STAGES, APPLICATION_TYPES, ROLES } from "../../config/constants.js";
 import { authenticate, requireRole } from "../../middleware/auth.js";
 import { withTransaction, writeAudit } from "../../middleware/audit.js";
 import { validate } from "../../middleware/validate.js";
-import { Alert, Application, Institution, PendingItem, StageConfig, StageHistory, Undertaking, User, Visit } from "../../models/index.js";
+import { Alert, Application, Institution, OutboxEvent, PendingItem, StageConfig, StageHistory, Undertaking, User, Visit } from "../../models/index.js";
 import { logger } from "../../config/logger.js";
 import { NotificationService } from "../notifications/service.js";
 
@@ -45,6 +46,26 @@ const defaultPaths = {
 
 function success(res, req, data, meta = {}) {
   return res.json({ data, error: null, meta: { requestId: req.id, ...meta } });
+}
+
+async function writeApplicationOutbox(application, eventType, session, actorId, reason = "") {
+  await OutboxEvent.create([{
+    eventId: randomUUID(),
+    eventType,
+    entityId: String(application._id),
+    payload: {
+      applicationId: String(application._id),
+      applicationNumber: application.application_number || "",
+      institutionId: String(application.institution_id),
+      type: application.type,
+      status: application.status,
+      currentStage: application.current_stage,
+      assignedOfficerId: application.assigned_officer_id ? String(application.assigned_officer_id) : null,
+      actorId: String(actorId),
+      ...(reason ? { reason } : {}),
+    },
+    publishedAt: null,
+  }], { session });
 }
 
 async function queueUserNotice(userId, type, subject, body, key, sms = false, extra = {}) {
@@ -98,15 +119,19 @@ export function applicationsRouter() {
         institutionId = (await Institution.findOne({ contact_email: req.user.email, deleted_at: null }).select("_id"))?._id;
       }
       if (!institutionId) return res.status(400).json({ data: null, error: { code: "INSTITUTION_REQUIRED", message: "Your account is not linked to an institution" }, meta: { requestId: req.id } });
-      const application = await Application.create({
-        institution_id: institutionId,
-        ...req.body,
-        current_stage: "SUBMITTED",
-        status: "DRAFT",
-        stage_entered_at: new Date(),
-        is_compliant: true,
+      const application = await withTransaction(async (session) => {
+        const [created] = await Application.create([{
+          institution_id: institutionId,
+          ...req.body,
+          current_stage: "SUBMITTED",
+          status: "DRAFT",
+          stage_entered_at: new Date(),
+          is_compliant: true,
+        }], { session });
+        await writeApplicationOutbox(created, "application.created", session, req.user._id);
+        await writeAudit({ actor_id: req.user._id, action: "APPLICATION_CREATED", entity: "Application", entity_id: created._id, after_json: created.toObject(), ip: req.ip }, { session });
+        return created;
       });
-      await writeAudit({ actor_id: req.user._id, action: "APPLICATION_CREATED", entity: "Application", entity_id: application._id, after_json: application.toObject(), ip: req.ip });
       return res.status(201).json({ data: application, error: null, meta: { requestId: req.id } });
     } catch (error) { return next(error); }
   });
@@ -173,6 +198,7 @@ export function applicationsRouter() {
         application.assigned_officer_id = initialAssignment?._id || application.assigned_officer_id;
         await application.save({ session });
         await StageHistory.create([{ application_id: application._id, from_stage: "SUBMITTED", to_stage: nextStage, actor_id: req.user._id, reason: "Application submitted" }], { session });
+        await writeApplicationOutbox(application, "application.submitted", session, req.user._id);
         await writeAudit({ actor_id: req.user._id, action: "APPLICATION_SUBMITTED", entity: "Application", entity_id: application._id, before_json: previous, after_json: application.toObject(), ip: req.ip }, { session });
       });
       const institutionUser = req.user.role === "INSTITUTION"
@@ -219,6 +245,7 @@ export function applicationsRouter() {
         await withTransaction(async (session) => {
           await application.save({ session });
           await StageHistory.create([{ application_id: application._id, from_stage: previous.current_stage, to_stage: nextStage, actor_id: req.user._id, reason: "" }], { session });
+          await writeApplicationOutbox(application, "application.stage_advanced", session, req.user._id);
           await writeAudit({ actor_id: req.user._id, action: "APPLICATION_STAGE_ADVANCED", entity: "Application", entity_id: application._id, before_json: previous, after_json: application.toObject(), ip: req.ip }, { session });
         });
       } catch (error) {
@@ -258,6 +285,7 @@ export function applicationsRouter() {
         await withTransaction(async (session) => {
           await application.save({ session });
           await StageHistory.create([{ application_id: application._id, from_stage: fromStage, to_stage: "SCRUTINY", actor_id: req.user._id, reason: req.body.reason }], { session });
+          await writeApplicationOutbox(application, "application.stage_returned", session, req.user._id, req.body.reason);
           await writeAudit({ actor_id: req.user._id, action: "APPLICATION_STAGE_RETURNED", entity: "Application", entity_id: application._id, before_json: before, after_json: application.toObject(), ip: req.ip }, { session });
           const institutionUser = await User.findOne({ institution_id: application.institution_id, role: "INSTITUTION", status: "ACTIVE" }).select("_id").session(session);
           await Alert.create([{ application_id: application._id, type: "APPLICATION_RETURNED", severity: "MEDIUM", target_user_id: institutionUser?._id || req.user._id, title: "Application returned for correction", body: req.body.reason }], { session });
@@ -293,6 +321,7 @@ export function applicationsRouter() {
         await withTransaction(async (session) => {
           await application.save({ session });
           await StageHistory.create([{ application_id: application._id, from_stage: before.current_stage, to_stage: "SCRUTINY", actor_id: req.user._id, reason: "Institution resubmitted after correction" }], { session });
+          await writeApplicationOutbox(application, "application.resubmitted", session, req.user._id, "Institution resubmitted after correction");
           await writeAudit({ actor_id: req.user._id, action: "APPLICATION_RESUBMITTED", entity: "Application", entity_id: application._id, before_json: before, after_json: application.toObject(), ip: req.ip }, { session });
         });
       } catch (error) {
@@ -318,10 +347,18 @@ export function applicationsRouter() {
     try {
       const scope = await applicationScope(req);
       const filter = { _id: req.params.id, ...(scope || {}) };
-      const before = await Application.findOne(filter).lean();
-      if (!before) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Application not found" }, meta: { requestId: req.id } });
-      const application = await Application.findOneAndUpdate(filter, { $set: req.body }, { new: true, runValidators: true });
-      await writeAudit({ actor_id: req.user._id, action: "APPLICATION_UPDATED", entity: "Application", entity_id: application._id, before_json: before, after_json: application.toObject(), ip: req.ip });
+      let before;
+      const application = await withTransaction(async (session) => {
+        const current = await Application.findOne(filter).session(session);
+        if (!current) return null;
+        before = current.toObject();
+        Object.assign(current, req.body);
+        await current.save({ session });
+        await writeApplicationOutbox(current, "application.updated", session, req.user._id);
+        await writeAudit({ actor_id: req.user._id, action: "APPLICATION_UPDATED", entity: "Application", entity_id: current._id, before_json: before, after_json: current.toObject(), ip: req.ip }, { session });
+        return current;
+      });
+      if (!application) return res.status(404).json({ data: null, error: { code: "NOT_FOUND", message: "Application not found" }, meta: { requestId: req.id } });
       return success(res, req, application);
     } catch (error) { return next(error); }
   });

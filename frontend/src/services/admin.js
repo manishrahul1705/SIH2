@@ -55,16 +55,43 @@ export const adminApi = {
     });
     return result.data;
   },
+  async listIncidents(filters = {}) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    }
+    const result = await adminRequest(`/admin/incidents?${query.toString()}`);
+    return { ...result.data, meta: result.meta };
+  },
+  async createIncident(body) {
+    const result = await adminRequest("/admin/incidents", { method: "POST", body });
+    return result.data;
+  },
+  async getApplicationIncidents(workflowType, applicationId) {
+    const result = await adminRequest(`/admin/incidents/${encodeURIComponent(workflowType)}/${encodeURIComponent(applicationId)}`);
+    return result.data;
+  },
+  async actOnIncident(incidentId, body) {
+    const result = await adminRequest(`/admin/incidents/${encodeURIComponent(incidentId)}/actions`, {
+      method: "POST",
+      body,
+    });
+    return result.data;
+  },
 };
 
 export const adminRoleLabels = Object.freeze({
   INSTITUTION: "Institution",
   SCRUTINY_OFFICER: "Scrutiny Officer",
   EVC: "EVC Member",
+  EVC_CHAIRMAN: "EVC Chairman",
   SAC_SHC: "SAC / SHC Member",
   BUREAU_OFFICER: "Bureau Officer",
   SENIOR_AUTHORITY: "Senior Authority",
   ADMIN: "Admin",
   STUDENT: "Student",
   FACULTY: "Faculty",
+  GRIEVANCE_OFFICER: "Institution Grievance Officer",
+  OMBUDSPERSON: "Ombudsperson",
+  UNIVERSITY_DTE_OFFICER: "University/DTE Officer",
 });

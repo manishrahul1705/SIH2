@@ -122,6 +122,26 @@ def test_model_crash_gives_blank_fields(tmp_path):
     assert out["fields"]["lease_start"]["blank_reason"] == "model_failed:RuntimeError"
 
 
+def test_explicit_lease_start_and_end_labels_override_model_ranking(tmp_path):
+    pdf = tmp_path / "lease.pdf"
+    make_pdf(pdf, ["Lease start date: 12 October 2014", "Lease end date: 11 October 2039"])
+
+    def blank_prediction(_):
+        return {
+            "model_version": "stub",
+            "roles": {
+                role: {"candidate_id": "", "confidence": 0.0, "blank_reason": "not_found"}
+                for role in ("lease_start", "lease_end", "term_value")
+            },
+        }
+
+    out = m3_extract.build_result(str(pdf), "lease", DEMO_AS_OF, 30, predictor=blank_prediction)
+    assert out["fields"]["lease_start"]["value"] == "2014-10-12"
+    assert out["fields"]["lease_end"]["value"] == "2039-10-11"
+    assert out["fields"]["lease_start"]["needs_confirmation"] is True
+    assert out["fields"]["lease_end"]["needs_confirmation"] is True
+
+
 def test_not_a_lease_and_unreadable(tmp_path):
     pdf = tmp_path / "x.pdf"
     make_pdf(pdf, ["hello"])
@@ -184,3 +204,19 @@ def test_adapter_understands_a_project_ocr_shape(tmp_path, monkeypatch):
     monkeypatch.setattr(m3_extract, "_read_with_project_ocr", lambda p: (raw, "ocr_extract.x"))
     pages, engine, q = m3_extract.read_document("whatever.pdf")
     assert engine == "ocr_extract.x" and pages[0]["text"] == "Start 12 March 2026"
+
+
+def test_precomputed_ocr_data_skips_file_ocr(monkeypatch):
+    raw = {"pages": [{"page": 1, "words": [
+        {"text": "Lease", "bbox": [0.1, 0.1, 0.2, 0.12]},
+        {"text": "commences", "bbox": [0.21, 0.1, 0.35, 0.12]},
+    ]}]}
+    monkeypatch.setattr(
+        m3_extract,
+        "_read_with_project_ocr",
+        lambda _path: pytest.fail("M3 must reuse precomputed OCR data"),
+    )
+    pages, engine, quarantined = m3_extract.read_document("unused.pdf", raw)
+    assert engine == "precomputed_ocr"
+    assert not quarantined
+    assert pages[0]["text"] == "Lease commences"

@@ -3,7 +3,7 @@ import argon2 from "argon2";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { SESSION_MAX_AGE_MS } from "../config/constants.js";
-import { EmailVerification, Institution, PasswordReset, Session, User } from "../models/index.js";
+import { EmailVerification, Institution, OutboxEvent, PasswordReset, Session, User } from "../models/index.js";
 import { validate } from "./validate.js";
 import express from "express";
 import { NotificationService } from "../modules/notifications/service.js";
@@ -136,6 +136,17 @@ export function csrfProtection(req, res, next) {
 
 export function authRouter({ audit }) {
   const router = express.Router();
+  const recordAuthMutation = async ({ session, eventType, entityId, payload, action, entity, actorId, ip }) => {
+    const options = session ? { session } : {};
+    await OutboxEvent.create([{
+      eventId: randomUUID(),
+      eventType,
+      entityId: String(entityId),
+      payload,
+      publishedAt: null,
+    }], options);
+    await audit({ actor_id: actorId, action, entity, entity_id: entityId, after_json: payload, ip }, options);
+  };
     router.post("/login", validate(loginSchema), async (req, res, next) => {
       try {
         const user = await User.findOne({ email: req.body.email, deleted_at: null }).select("+password_hash");
@@ -183,10 +194,22 @@ export function authRouter({ audit }) {
         if (!await argon2.verify(user.password_hash, req.body.current_password)) {
           return res.status(400).json({ data: null, error: { code: "INVALID_PASSWORD", message: "Current password is incorrect" }, meta: { requestId: req.id } });
         }
-        user.password_hash = await argon2.hash(req.body.password, { type: argon2.argon2id });
-        await user.save();
-        await Session.updateMany({ user_id: user._id, _id: { $ne: req.sessionRecord._id }, revoked_at: null }, { $set: { revoked_at: new Date() } });
-        await audit({ actor_id: user._id, action: "AUTH_PASSWORD_CHANGED", entity: "User", entity_id: user._id.toString(), ip: req.ip });
+        const passwordHash = await argon2.hash(req.body.password, { type: argon2.argon2id });
+        await withTransaction(async (session) => {
+          user.password_hash = passwordHash;
+          await user.save(session ? { session } : {});
+          await Session.updateMany({ user_id: user._id, _id: { $ne: req.sessionRecord._id }, revoked_at: null }, { $set: { revoked_at: new Date() } }, session ? { session } : {});
+          await recordAuthMutation({
+            session,
+            eventType: "auth.password_changed",
+            entityId: user._id,
+            payload: { otherSessionsRevoked: true },
+            action: "AUTH_PASSWORD_CHANGED",
+            entity: "User",
+            actorId: user._id,
+            ip: req.ip,
+          });
+        });
         return res.json({ data: { changed: true, other_sessions_revoked: true }, error: null, meta: { requestId: req.id } });
       } catch (error) { return next(error); }
     });
@@ -215,12 +238,24 @@ export function authRouter({ audit }) {
         const reset = await PasswordReset.findOne({ token_hash: tokenHash, used_at: null, expires_at: { $gt: new Date() } });
         if (!reset) return res.status(400).json({ data: null, error: { code: "INVALID_RESET_TOKEN", message: "Reset token is invalid or expired" }, meta: { requestId: req.id } });
         const user = await User.findById(reset.user_id).select("+password_hash");
-        user.password_hash = await argon2.hash(req.body.password, { type: argon2.argon2id });
-        await user.save();
-        reset.used_at = new Date();
-        await reset.save();
-        await Session.updateMany({ user_id: user._id, revoked_at: null }, { $set: { revoked_at: new Date() } });
-        await audit({ actor_id: user._id, action: "AUTH_PASSWORD_RESET", entity: "User", entity_id: user._id.toString(), ip: req.ip });
+        const passwordHash = await argon2.hash(req.body.password, { type: argon2.argon2id });
+        await withTransaction(async (session) => {
+          user.password_hash = passwordHash;
+          await user.save(session ? { session } : {});
+          reset.used_at = new Date();
+          await reset.save(session ? { session } : {});
+          await Session.updateMany({ user_id: user._id, revoked_at: null }, { $set: { revoked_at: new Date() } }, session ? { session } : {});
+          await recordAuthMutation({
+            session,
+            eventType: "auth.password_reset",
+            entityId: user._id,
+            payload: { resetId: String(reset._id), sessionsRevoked: true },
+            action: "AUTH_PASSWORD_RESET",
+            entity: "User",
+            actorId: user._id,
+            ip: req.ip,
+          });
+        });
         return res.json({ data: { reset: true }, error: null, meta: { requestId: req.id } });
       } catch (error) { return next(error); }
     });
@@ -229,6 +264,7 @@ export function authRouter({ audit }) {
         const token = randomBytes(32).toString("base64url");
         const tokenHash = createHash("sha256").update(token).digest("hex");
         let createdUser;
+        let createdInstitution;
         await withTransaction(async (session) => {
           const institution = await Institution.create([{
             ...req.body.institution,
@@ -236,6 +272,7 @@ export function authRouter({ audit }) {
             contact_email: req.body.institution.contact_email.toLowerCase(),
             status: "PENDING_VERIFICATION",
           }], { session });
+          createdInstitution = institution[0];
           [createdUser] = await User.create([{
             role: "INSTITUTION",
             name: req.body.name,
@@ -247,8 +284,17 @@ export function authRouter({ audit }) {
             status: "PENDING_VERIFICATION",
           }], { session });
           await EmailVerification.create([{ user_id: createdUser._id, token_hash: tokenHash, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000) }], { session });
+          await recordAuthMutation({
+            session,
+            eventType: "institution.registration_requested",
+            entityId: createdInstitution._id,
+            payload: { userId: String(createdUser._id), status: "PENDING_VERIFICATION" },
+            action: "INSTITUTION_REGISTRATION_REQUESTED",
+            entity: "Institution",
+            actorId: createdUser._id,
+            ip: req.ip,
+          });
         });
-        await audit({ actor_id: createdUser._id, action: "INSTITUTION_REGISTRATION_REQUESTED", entity: "Institution", entity_id: createdUser.institution_id.toString(), after_json: { verification_required: true }, ip: req.ip });
         await NotificationService.enqueue({
           type: "INSTITUTION_EMAIL_VERIFICATION",
           channel: "EMAIL",
@@ -266,11 +312,32 @@ export function authRouter({ audit }) {
         if (!verification) return res.status(400).json({ data: null, error: { code: "INVALID_VERIFICATION_TOKEN", message: "Verification token is invalid or expired" }, meta: { requestId: req.id } });
         await withTransaction(async (session) => {
           verification.used_at = new Date();
-          await verification.save({ session });
+          await verification.save(session ? { session } : {});
           const user = await User.findByIdAndUpdate(verification.user_id, { $set: { status: "ACTIVE", email_verified_at: new Date() } }, { new: true, session });
-          if (user?.institution_id) await Institution.updateOne({ _id: user.institution_id }, { $set: { status: "ACTIVE" } }, { session });
+          await recordAuthMutation({
+            session,
+            eventType: "auth.email_verified",
+            entityId: verification.user_id,
+            payload: { status: "ACTIVE" },
+            action: "INSTITUTION_EMAIL_VERIFIED",
+            entity: "User",
+            actorId: verification.user_id,
+            ip: req.ip,
+          });
+          if (user?.institution_id) {
+            await Institution.updateOne({ _id: user.institution_id }, { $set: { status: "ACTIVE" } }, session ? { session } : {});
+            await recordAuthMutation({
+              session,
+              eventType: "institution.activated",
+              entityId: user.institution_id,
+              payload: { status: "ACTIVE", verificationUserId: String(user._id) },
+              action: "INSTITUTION_ACTIVATED",
+              entity: "Institution",
+              actorId: user._id,
+              ip: req.ip,
+            });
+          }
         });
-        await audit({ actor_id: verification.user_id, action: "INSTITUTION_EMAIL_VERIFIED", entity: "User", entity_id: verification.user_id.toString(), ip: req.ip });
         return res.json({ data: { verified: true }, error: null, meta: { requestId: req.id } });
       } catch (error) { return next(error); }
     });

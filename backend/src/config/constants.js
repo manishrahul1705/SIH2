@@ -2,12 +2,16 @@ export const ROLES = Object.freeze([
   "INSTITUTION",
   "SCRUTINY_OFFICER",
   "EVC",
+  "EVC_CHAIRMAN",
   "SAC_SHC",
   "BUREAU_OFFICER",
   "SENIOR_AUTHORITY",
   "ADMIN",
   "STUDENT",
   "FACULTY",
+  "GRIEVANCE_OFFICER",
+  "OMBUDSPERSON",
+  "UNIVERSITY_DTE_OFFICER",
 ]);
 
 export const APPLICATION_TYPES = Object.freeze([
